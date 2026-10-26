@@ -21,7 +21,6 @@ RUN if [ -n "$EXTRAS" ]; then pip install ".[${EXTRAS}]"; else pip install --no-
 
 RUN useradd --create-home --uid 10001 app && mkdir -p /data && chown app /data
 USER app
-VOLUME ["/data"]
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD python -c "import os,urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\",\"8000\")}/healthz', timeout=4)"
