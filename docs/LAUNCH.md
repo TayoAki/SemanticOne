@@ -16,7 +16,10 @@ Verified on the live site:
 - HSTS and security headers.
 
 How to sell today (no extra setup):
-1. Sign up at the live URL with the email in `ADMIN_EMAILS`. That account gets the **Admin** console (`/admin`).
+1. Sign up at the live URL with the email in `ADMIN_EMAILS`, then open `/admin/claim` and enter the operator code.
+   - **Where to find the code:** Railway → `web` → Deployments → View logs (line "Operator console not claimed yet…"), or run `semanticone operator-code` in `railway ssh`.
+   - **Why a code:** sign-up doesn't verify email ownership, so matching `ADMIN_EMAILS` alone grants nothing.
+   - Once claimed, that account gets the **Admin** console at `/admin`.
 2. Prospects use **Talk to sales**: the pricing page, the in-app billing page and `/contact`. Leads appear under Admin → Leads.
 3. Invoice them however you like (Stripe Invoicing, PayPal, bank transfer), then set their plan under Admin → Workspaces.
 4. For self-serve card payments, paste your Stripe secret key under Admin → Overview → Payments. The app creates the Pro and Business prices, the webhook and the customer portal itself. Try an `sk_test_` key first (card 4242 4242 4242 4242), then switch to `sk_live_`.

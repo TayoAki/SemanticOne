@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Claim operator access · SemanticOne{% endblock %}
+{% block content %}
+<div class="card auth-card" style="max-width:520px">
+  <h1>Claim operator access</h1>
+  <p class="muted">Your email is listed in <code>ADMIN_EMAILS</code>. To prove you run this deployment, enter the operator code. It is printed in the server logs at startup and by <code>semanticone operator-code</code> in the server shell (for Railway: Deployments → View logs, or <code>railway ssh</code>).</p>
+  {% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+  <form method="post" action="/admin/claim">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="field"><label for="code">Operator code</label><input id="code" name="code" type="text" required autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX"></div>
+    <button class="btn primary" type="submit" style="width:100%">Unlock admin console</button>
+  </form>
+</div>
+{% endblock %}

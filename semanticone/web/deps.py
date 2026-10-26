@@ -10,7 +10,7 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from .. import security
 from ..config import get_settings
@@ -113,13 +113,30 @@ class Ctx:
             raise HTTPException(status_code=403, detail="Only workspace admins can do this.")
 
 
-def is_platform_admin(user: User | None) -> bool:
+class OperatorClaimRequired(Exception):
+    pass
+
+
+def is_operator_candidate(user: User | None) -> bool:
     return user is not None and user.email.lower() in get_settings().admin_emails
 
 
+def is_platform_admin(user: User | None) -> bool:
+    """ADMIN_EMAILS alone is not enough (sign-up doesn't prove email ownership): the account must
+    also have claimed operator access with the code only the server's operator can read."""
+    if not is_operator_candidate(user):
+        return False
+    from ..platform_settings import operator_user_ids
+
+    db = object_session(user)
+    return db is not None and user.id in operator_user_ids(db)
+
+
 def require_platform_admin(user: User = Depends(require_user)) -> User:
-    if not is_platform_admin(user):
+    if not is_operator_candidate(user):
         raise HTTPException(status_code=404)
+    if not is_platform_admin(user):
+        raise OperatorClaimRequired()
     return user
 
 

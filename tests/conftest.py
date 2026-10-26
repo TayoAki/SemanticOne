@@ -75,3 +75,10 @@ def set_plan(slug_or_email: str, plan: str) -> None:
             org = membership.organization
         org.plan = plan
         org.subscription_status = "active"
+
+
+def claim_operator(client: TestClient, csrf: str) -> None:
+    from semanticone.security import operator_claim_code
+
+    r = client.post("/admin/claim", data={"csrf_token": csrf, "code": operator_claim_code()}, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/admin", r.text[:300]

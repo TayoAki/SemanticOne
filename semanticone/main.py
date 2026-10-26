@@ -21,7 +21,7 @@ from .db import get_engine, init_engine
 from .engine.demo import ensure_demo_database
 from .migrate import upgrade_database
 from .web import admin, app_routes, public
-from .web.deps import LoginRequired, render
+from .web.deps import LoginRequired, OperatorClaimRequired, render
 
 log = logging.getLogger("semanticone")
 
@@ -40,6 +40,7 @@ def create_app(database_url: str | None = None, run_migrations: bool = True) -> 
         if run_migrations:
             upgrade_database(get_engine())
         ensure_demo_database(settings.data_dir)
+        _log_operator_claim(settings)
         yield
 
     app = FastAPI(
@@ -90,6 +91,10 @@ def create_app(database_url: str | None = None, run_migrations: bool = True) -> 
         target = request.url.path + (f"?{request.url.query}" if request.url.query else "")
         return RedirectResponse(f"/login?next={quote(target)}", status_code=303)
 
+    @app.exception_handler(OperatorClaimRequired)
+    async def operator_claim_required(_request: Request, _exc: OperatorClaimRequired):
+        return RedirectResponse("/admin/claim", status_code=303)
+
     @app.exception_handler(api.ApiError)
     async def api_error(_request: Request, exc: api.ApiError):
         return api.error_response(exc)
@@ -116,6 +121,24 @@ def create_app(database_url: str | None = None, run_migrations: bool = True) -> 
         return JSONResponse({"error": {"message": "Invalid request", "status": 422, "details": errors}}, status_code=422)
 
     return app
+
+
+def _log_operator_claim(settings) -> None:
+    """Until an operator has claimed the console, print the claim code where only operators can see it."""
+    if not settings.admin_emails:
+        return
+    from .db import session_scope
+    from .platform_settings import operator_user_ids
+    from .security import operator_claim_code
+
+    with session_scope() as db:
+        if operator_user_ids(db):
+            return
+    log.warning(
+        "Operator console not claimed yet. Sign up or sign in as one of ADMIN_EMAILS, open /admin/claim and "
+        "enter this code: %s (also printed by `semanticone operator-code`).",
+        operator_claim_code(),
+    )
 
 
 def app_factory() -> FastAPI:  # pragma: no cover - used by uvicorn --factory

@@ -70,6 +70,13 @@ def _set_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def _operator_code(_args: argparse.Namespace) -> int:
+    from .security import operator_claim_code
+
+    print(operator_claim_code())
+    return 0
+
+
 def _list_workspaces(_args: argparse.Namespace) -> int:
     from .db import session_scope
     from .models import Membership, Organization
@@ -106,6 +113,9 @@ def main(argv: list[str] | None = None) -> int:
     set_plan.set_defaults(func=_set_plan)
 
     sub.add_parser("list-workspaces", help="List workspaces and plans").set_defaults(func=_list_workspaces)
+    sub.add_parser("operator-code", help="Print the code that unlocks /admin for ADMIN_EMAILS accounts").set_defaults(
+        func=_operator_code
+    )
 
     args = parser.parse_args(argv)
     return args.func(args)

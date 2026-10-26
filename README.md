@@ -49,7 +49,7 @@ The app is a single container (`Dockerfile`) plus PostgreSQL.
 
 ### Operator console and Stripe
 
-Set `ADMIN_EMAILS` to your email. Signing up with that address unlocks `/admin`:
+Set `ADMIN_EMAILS` to your email and sign up with that address. Then open `/admin/claim` and enter the operator code from the startup logs, or from `semanticone operator-code` in the server shell. Sign-up doesn't verify email ownership, so the email alone grants nothing. The console offers:
 - **Overview:** estimated MRR, usage and the latest leads.
 - **Workspaces:** set plans for invoiced customers.
 - **Leads:** requests from the public "Talk to sales" form (`/contact`).

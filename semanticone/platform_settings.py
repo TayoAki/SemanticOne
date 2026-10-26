@@ -45,6 +45,17 @@ def set_setting(db: Session, key: str, value: str) -> None:
         row.value, row.encrypted = stored, encrypted
 
 
+def operator_user_ids(db: Session) -> set[int]:
+    raw = get_setting(db, "operator_user_ids")
+    return {int(x) for x in raw.split(",") if x.strip().isdigit()}
+
+
+def add_operator(db: Session, user_id: int) -> None:
+    ids = operator_user_ids(db) | {user_id}
+    set_setting(db, "operator_user_ids", ",".join(str(i) for i in sorted(ids)))
+    db.commit()
+
+
 @dataclass(frozen=True)
 class StripeConfig:
     secret_key: str

@@ -148,6 +148,21 @@ def load_reset_token(token: str, max_age_seconds: int = 3600) -> dict | None:
         return None
 
 
+# --- Operator bootstrap ----------------------------------------------------
+
+
+def operator_claim_code() -> str:
+    """Deterministic one-time code proving access to the server (logs / shell), not just an email address."""
+    digest = hmac.new(get_settings().secret_key.encode(), b"semanticone-operator-claim", hashlib.sha256).digest()
+    code = base64.b32encode(digest).decode()[:16]
+    return "-".join(code[i : i + 4] for i in range(0, 16, 4))
+
+
+def operator_code_matches(provided: str) -> bool:
+    normalized = provided.strip().upper().replace(" ", "")
+    return hmac.compare_digest(normalized, operator_claim_code())
+
+
 # --- CSRF -----------------------------------------------------------------
 
 

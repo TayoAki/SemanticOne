@@ -11,11 +11,44 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..models import LEAD_STATUSES, Membership, Organization, QueryLog, SalesLead, SemanticModel, User
 from ..plans import PLANS
-from ..platform_settings import StripeSetupError, connect_stripe, disconnect_stripe, stripe_config
+from .. import security
+from ..platform_settings import StripeSetupError, add_operator, connect_stripe, disconnect_stripe, stripe_config
 from ..services import month_start, plan_for
-from .deps import flash, redirect, render, require_platform_admin, verify_csrf
+from .deps import (
+    flash,
+    is_operator_candidate,
+    is_platform_admin,
+    redirect,
+    render,
+    require_platform_admin,
+    require_user,
+    verify_csrf,
+)
 
 router = APIRouter(prefix="/admin")
+claim_throttle = security.LoginThrottle(max_failures=10, window_seconds=3600)
+
+
+@router.get("/claim")
+def admin_claim_form(request: Request, user: User = Depends(require_user)):
+    if not is_operator_candidate(user):
+        raise HTTPException(404)
+    if is_platform_admin(user):
+        return redirect("/admin")
+    return render(request, "admin/claim.html", None, user=user)
+
+
+@router.post("/claim", dependencies=[Depends(verify_csrf)])
+def admin_claim(request: Request, code: str = Form(...), user: User = Depends(require_user), db: Session = Depends(get_db)):
+    if not is_operator_candidate(user):
+        raise HTTPException(404)
+    key = f"claim|{user.id}"
+    if claim_throttle.blocked(key) or not security.operator_code_matches(code):
+        claim_throttle.failed(key)
+        return render(request, "admin/claim.html", None, user=user, error="That code is not valid.", status_code=400)
+    add_operator(db, user.id)
+    flash(request, "Operator access granted.", "success")
+    return redirect("/admin")
 
 
 def mrr_cents(db: Session) -> int:

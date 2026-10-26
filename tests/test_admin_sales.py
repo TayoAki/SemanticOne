@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-from conftest import csrf_of, signup
+from conftest import claim_operator, csrf_of, signup
 from sqlalchemy import select
 
 from semanticone.db import session_scope
@@ -53,13 +53,32 @@ def test_upgrade_request_links_lead_to_workspace(client):
 
 
 def test_admin_console_requires_operator(client):
-    signup(client, "someone@example.com", "Someone")
+    csrf = signup(client, "someone@example.com", "Someone")
     assert client.get("/admin").status_code == 404
     assert client.get("/admin/workspaces").status_code == 404
+    # Knowing the code is not enough without an ADMIN_EMAILS address.
+    from semanticone.security import operator_claim_code
+
+    r = client.post("/admin/claim", data={"csrf_token": csrf, "code": operator_claim_code()})
+    assert r.status_code == 404
+
+
+def test_admin_email_alone_does_not_grant_access(client):
+    csrf = signup(client)  # owner@example.com is in ADMIN_EMAILS, but sign-up doesn't prove ownership
+    r = client.get("/admin", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/admin/claim"
+    assert 'href="/admin"' not in client.get("/app").text
+    bad = client.post("/admin/claim", data={"csrf_token": csrf, "code": "AAAA-BBBB-CCCC-DDDD"})
+    assert bad.status_code == 400
+    assert client.get("/admin", follow_redirects=False).status_code == 303
+    claim_operator(client, csrf)
+    assert client.get("/admin").status_code == 200
+    assert 'href="/admin"' in client.get("/app").text
 
 
 def test_admin_console_sets_plans_and_tracks_leads(client):
     csrf = signup(client)  # owner@example.com is in ADMIN_EMAILS
+    claim_operator(client, csrf)
     for path in ["/admin", "/admin/workspaces", "/admin/leads"]:
         assert client.get(path).status_code == 200, path
     assert 'href="/admin"' in client.get("/app").text
@@ -127,6 +146,7 @@ def test_one_paste_stripe_connect_enables_checkout(client, monkeypatch):
     FakeStripe.calls.clear()
     try:
         csrf = signup(client)
+        claim_operator(client, csrf)
         bad = client.post("/admin/stripe/connect", data={"csrf_token": csrf, "secret_key": "pk_test_123"}, follow_redirects=True)
         assert "look like a Stripe secret key" in bad.text
 
@@ -161,3 +181,13 @@ def test_one_paste_stripe_connect_enables_checkout(client, monkeypatch):
         assert client.post("/webhooks/stripe", content=body, headers=headers).status_code == 200
     finally:
         get_settings.cache_clear()
+
+
+def test_operator_code_cli(capsys):
+    from semanticone.cli import main
+    from semanticone.security import operator_claim_code, operator_code_matches
+
+    assert main(["operator-code"]) == 0
+    printed = capsys.readouterr().out.strip()
+    assert printed == operator_claim_code()
+    assert operator_code_matches(printed.lower().replace("-", "-"))
