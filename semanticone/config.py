@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import secrets
+import sys
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -98,6 +99,7 @@ def _instance_keys(data_dir: Path) -> dict[str, str]:
             pass
         finally:
             os.unlink(tmp)
+        logging.basicConfig(level=logging.INFO, stream=sys.stdout)
         logging.getLogger("semanticone").warning(
             "Generated SECRET_KEY/ENCRYPTION_KEY in %s. Back up this file: losing it makes saved "
             "warehouse credentials unreadable.",

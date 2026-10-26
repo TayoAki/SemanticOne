@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import quote
@@ -29,7 +30,9 @@ STATIC_DIR = Path(__file__).parent / "web" / "static"
 
 def create_app(database_url: str | None = None, run_migrations: bool = True) -> FastAPI:
     settings = get_settings()
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s", stream=sys.stdout
+    )
     init_engine(database_url)
 
     @asynccontextmanager

@@ -10,8 +10,14 @@ from sqlalchemy import func, select
 
 
 def _serve(args: argparse.Namespace) -> int:
-    import uvicorn
+    import copy
 
+    import uvicorn
+    from uvicorn.config import LOGGING_CONFIG
+
+    # Log to stdout: platforms such as Railway mark stderr lines as errors.
+    log_config = copy.deepcopy(LOGGING_CONFIG)
+    log_config["handlers"]["default"]["stream"] = "ext://sys.stdout"
     uvicorn.run(
         "semanticone.main:app_factory",
         factory=True,
@@ -21,6 +27,7 @@ def _serve(args: argparse.Namespace) -> int:
         proxy_headers=True,
         forwarded_allow_ips="*",
         reload=args.reload,
+        log_config=log_config,
     )
     return 0
 
