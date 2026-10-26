@@ -20,7 +20,7 @@ from .config import get_settings
 from .db import get_engine, init_engine
 from .engine.demo import ensure_demo_database
 from .migrate import upgrade_database
-from .web import app_routes, public
+from .web import admin, app_routes, public
 from .web.deps import LoginRequired, render
 
 log = logging.getLogger("semanticone")
@@ -74,6 +74,7 @@ def create_app(database_url: str | None = None, run_migrations: bool = True) -> 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     app.include_router(public.router)
     app.include_router(app_routes.router)
+    app.include_router(admin.router)
     app.include_router(billing.router)
     app.include_router(api.router)
     app.include_router(mcp.router)

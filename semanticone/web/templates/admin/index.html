@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Admin · SemanticOne{% endblock %}
+{% block content %}
+{% set title = "Overview" %}{% set tab = "home" %}
+{% include "admin/_tabs.html" %}
+<div class="grid cols-4" style="margin-bottom:16px">
+  <div class="card stat"><div class="label">Estimated MRR</div><div class="value">${{ '{:,.0f}'.format(stats.mrr) }}</div><div class="muted small">{{ stats.paid }} paid workspace{{ 's' if stats.paid != 1 }}</div></div>
+  <div class="card stat"><div class="label">Workspaces</div><div class="value">{{ stats.workspaces }}</div><div class="muted small">{{ stats.users }} users</div></div>
+  <div class="card stat"><div class="label">Queries (30 days)</div><div class="value">{{ '{:,}'.format(stats.queries_30d) }}</div></div>
+  <div class="card stat"><div class="label">New leads</div><div class="value">{{ stats.new_leads }}</div><div class="muted small"><a href="/admin/leads">View leads</a></div></div>
+</div>
+<div class="grid cols-2">
+  <div class="card">
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Payments (Stripe)</h3>
+      {% if stripe.enabled %}<span class="badge ok">{{ 'Live' if stripe.live_mode else 'Test mode' }}</span>{% else %}<span class="badge warn">Not connected</span>{% endif %}
+    </div>
+    {% if stripe.enabled %}
+      <p class="small" style="margin-top:10px">Customers upgrade from their Billing page with Stripe Checkout and manage cards, invoices and cancellation in the Stripe customer portal. Plans sync automatically through the webhook.</p>
+      <p class="small muted">Configured via {{ stripe.source }} · Pro price <code>{{ stripe.price_pro or '—' }}</code> · Business price <code>{{ stripe.price_business or '—' }}</code> · webhook {{ 'set' if stripe.webhook_secret else 'missing' }}</p>
+      {% if stripe.source == 'admin console' %}
+      <form method="post" action="/admin/stripe/disconnect" onsubmit="return confirm('Disconnect Stripe? New upgrades will go through sales until you reconnect.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn small danger" type="submit">Disconnect</button>
+      </form>
+      {% endif %}
+    {% else %}
+      <p class="small" style="margin-top:10px">Paste your Stripe <strong>secret key</strong> (Stripe Dashboard → Developers → API keys). SemanticOne creates the Pro ({{ PLANS.pro.price_label }}) and Business ({{ PLANS.business.price_label }}) prices, the webhook and the customer portal for you. Use a <code>sk_test_</code> key first to try a purchase with card 4242 4242 4242 4242.</p>
+      <form method="post" action="/admin/stripe/connect">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="field"><input name="secret_key" type="password" required autocomplete="off" spellcheck="false" placeholder="sk_live_… or sk_test_…" aria-label="Stripe secret key"></div>
+        <button class="btn primary" type="submit">Connect Stripe</button>
+      </form>
+      <p class="small muted" style="margin-top:10px">Until Stripe is connected you can still sell: customers use "Talk to sales", you invoice them however you like, then set their plan under <a href="/admin/workspaces">Workspaces</a>.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h3>Latest leads</h3>
+    {% if leads %}
+      <table>
+        {% for l in leads %}
+        <tr><td class="small"><strong>{{ l.company or l.email }}</strong><div class="muted">{{ l.email }}{% if l.plan_interest %} · {{ l.plan_interest }}{% endif %}</div></td><td class="right"><span class="badge {{ 'warn' if l.status == 'new' else 'ok' if l.status == 'won' else '' }}">{{ l.status }}</span></td></tr>
+        {% endfor %}
+      </table>
+    {% else %}<p class="muted small">No leads yet. They arrive from "Talk to sales" on the pricing and billing pages.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Workspaces · Admin · SemanticOne{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+{% set title = "Workspaces" %}{% set tab = "workspaces" %}
+{% include "admin/_tabs.html" %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Workspace</th><th>Owner</th><th>Plan</th><th class="right">Members</th><th class="right">Models</th><th class="right">Queries (month)</th><th>Created</th><th>Set plan</th></tr></thead>
+    <tbody>
+      {% for o in orgs %}
+      <tr>
+        <td><strong>{{ o.name }}</strong><div class="muted small mono">{{ o.slug }}</div></td>
+        <td class="small">{{ owners.get(o.id, '—') }}</td>
+        <td><span class="badge {{ 'ok' if o.plan != 'free' }}">{{ o.plan }}</span>{% if o.subscription_status %}<div class="muted small">{{ o.subscription_status }}{{ ' · Stripe' if o.stripe_subscription_id }}</div>{% endif %}</td>
+        <td class="num">{{ members.get(o.id, 0) }}</td>
+        <td class="num">{{ models.get(o.id, 0) }}</td>
+        <td class="num">{{ '{:,}'.format(queries.get(o.id, 0)) }}</td>
+        <td class="small muted nowrap">{{ o.created_at|dt }}</td>
+        <td>
+          <form class="row" method="post" action="/admin/workspaces/{{ o.id }}/plan" style="flex-wrap:nowrap">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <select name="plan" style="width:auto;padding:4px 6px">{% for p in plans %}<option value="{{ p.key }}" {{ 'selected' if p.key == o.plan }}>{{ p.name }}</option>{% endfor %}</select>
+            <button class="btn small" type="submit">Save</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="empty">No workspaces yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="muted small" style="margin-top:10px">Setting a plan here is for invoiced customers. Workspaces paying through Stripe are kept in sync by the webhook.</p>
+{% endblock %}

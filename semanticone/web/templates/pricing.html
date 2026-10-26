@@ -17,7 +17,7 @@
     {% if p.self_serve %}
       <a class="btn {{ 'primary' if p.key == 'pro' }}" href="{{ '/app/billing' if user else '/signup' }}">{{ 'Start free' if p.key == 'free' else 'Choose ' + p.name }}</a>
     {% else %}
-      <a class="btn" href="mailto:{{ settings.sales_email }}?subject=SemanticOne%20Enterprise">Contact sales</a>
+      <a class="btn" href="/contact?plan={{ p.key }}">Talk to sales</a>
     {% endif %}
   </div>
   {% endfor %}

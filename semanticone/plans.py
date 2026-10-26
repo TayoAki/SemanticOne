@@ -22,6 +22,7 @@ class Plan:
     warehouse_connections: bool
     features: tuple[str, ...]
     self_serve: bool = True
+    monthly_price_cents: int = 0  # list price used when creating Stripe prices and estimating MRR
 
     def allows(self, limit: int, current: int) -> bool:
         return limit == UNLIMITED or current < limit
@@ -67,6 +68,7 @@ PLANS: dict[str, Plan] = {
             "10 seats, 10 API keys",
             "50,000 queries / month",
         ),
+        monthly_price_cents=14_900,
     ),
     "business": Plan(
         key="business",
@@ -87,6 +89,7 @@ PLANS: dict[str, Plan] = {
             "500,000 queries / month",
             "Priority support",
         ),
+        monthly_price_cents=59_900,
     ),
     "enterprise": Plan(
         key="enterprise",

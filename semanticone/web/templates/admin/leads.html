@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Leads · Admin · SemanticOne{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+{% set title = "Leads" %}{% set tab = "leads" %}
+{% include "admin/_tabs.html" %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Received</th><th>Contact</th><th>Interest</th><th>Message</th><th>Workspace</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for l in leads %}
+      <tr>
+        <td class="small muted nowrap">{{ l.created_at|dt }}</td>
+        <td><strong>{{ l.name or '—' }}</strong><div class="small"><a href="mailto:{{ l.email }}">{{ l.email }}</a></div><div class="small muted">{{ l.company }}</div></td>
+        <td>{{ l.plan_interest or '—' }}</td>
+        <td class="small" style="max-width:420px;white-space:pre-wrap">{{ l.message }}</td>
+        <td class="small">{% if l.organization %}<a href="/admin/workspaces">{{ l.organization.slug }}</a>{% else %}—{% endif %}</td>
+        <td>
+          <form class="row" method="post" action="/admin/leads/{{ l.id }}/status" style="flex-wrap:nowrap">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <select name="status" style="width:auto;padding:4px 6px" onchange="this.form.submit()">{% for s in statuses %}<option {{ 'selected' if s == l.status }}>{{ s }}</option>{% endfor %}</select>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="empty">No leads yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

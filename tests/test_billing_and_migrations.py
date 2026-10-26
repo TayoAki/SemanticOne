@@ -83,7 +83,7 @@ def test_lapsed_paid_plan_falls_back_to_free_limits():
 def test_billing_page_without_stripe_offers_sales(client):
     signup(client)
     page = client.get("/app/billing").text
-    assert "Contact sales" in page
+    assert "/contact?plan=pro" in page and "Talk to sales" in page
 
 
 def test_migrations_match_models(tmp_path):

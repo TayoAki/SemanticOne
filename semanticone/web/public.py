@@ -10,7 +10,7 @@ from .. import security
 from ..config import get_settings
 from ..db import get_db
 from ..mailer import send_email
-from ..models import Invite, Membership, User, utcnow
+from ..models import Invite, Membership, Organization, SalesLead, User, utcnow
 from ..plans import PLANS
 from ..services import ServiceError, authenticate, create_organization, create_user, memberships_for
 from .deps import flash, login_user, optional_user, redirect, render, verify_csrf
@@ -41,6 +41,75 @@ def terms(request: Request, user: User | None = Depends(optional_user)):
 @router.get("/legal/privacy")
 def privacy(request: Request, user: User | None = Depends(optional_user)):
     return render(request, "legal_privacy.html", user=user)
+
+
+# --- contact sales -----------------------------------------------------------
+
+contact_throttle = security.LoginThrottle(max_failures=5, window_seconds=3600)
+
+
+@router.get("/contact")
+def contact_form(request: Request, plan: str = "", workspace: str = "", user: User | None = Depends(optional_user)):
+    return render(
+        request,
+        "contact.html",
+        user=user,
+        plan=plan if plan in PLANS else "",
+        workspace=workspace,
+        plans=list(PLANS.values()),
+        form={"email": user.email if user else "", "name": user.name if user else ""},
+    )
+
+
+@router.post("/contact", dependencies=[Depends(verify_csrf)])
+def contact_submit(
+    request: Request,
+    name: str = Form(""),
+    email: str = Form(...),
+    company: str = Form(""),
+    plan: str = Form(""),
+    message: str = Form(""),
+    workspace: str = Form(""),
+    website: str = Form(""),  # honeypot: humans never see this field
+    user: User | None = Depends(optional_user),
+    db: Session = Depends(get_db),
+):
+    if website:
+        return render(request, "contact_thanks.html", user=user)
+    key = request.client.host if request.client else "?"
+    if contact_throttle.blocked(key):
+        flash(request, "Too many requests. Please try again later.", "error")
+        return redirect("/contact")
+    email = email.strip().lower()
+    if "@" not in email or len(email) > 320:
+        return render(
+            request, "contact.html", user=user, plan=plan, workspace=workspace, plans=list(PLANS.values()),
+            form={"name": name, "email": email, "company": company, "message": message},
+            error="Enter a valid email address.", status_code=400,
+        )
+    org = db.scalar(select(Organization).where(Organization.slug == workspace)) if workspace else None
+    if org is not None and (user is None or not any(m.organization_id == org.id for m in user.memberships)):
+        org = None  # only link a lead to a workspace the requester belongs to
+    lead = SalesLead(
+        name=name.strip()[:200],
+        email=email,
+        company=company.strip()[:200],
+        plan_interest=plan if plan in PLANS else "",
+        message=message.strip()[:5000],
+        organization_id=org.id if org else None,
+    )
+    db.add(lead)
+    db.commit()
+    contact_throttle.failed(key)  # counts submissions per client
+    settings = get_settings()
+    if settings.sales_email and not settings.sales_email.endswith("@example.com"):
+        send_email(
+            settings.sales_email,
+            f"New SemanticOne lead: {lead.company or lead.email} ({lead.plan_interest or 'general'})",
+            f"{lead.name} <{lead.email}>\nCompany: {lead.company}\nPlan: {lead.plan_interest}\n"
+            f"Workspace: {org.slug if org else '-'}\n\n{lead.message}\n\n{settings.base_url}/admin/leads",
+        )
+    return render(request, "contact_thanks.html", user=user)
 
 
 # --- signup / login ----------------------------------------------------------

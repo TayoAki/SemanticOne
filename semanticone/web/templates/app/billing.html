@@ -25,11 +25,11 @@
       {% if p.self_serve and billing_enabled and price_available[p.key] and membership.is_admin %}
         <form method="post" action="/app/billing/checkout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="plan" value="{{ p.key }}"><button class="btn primary" type="submit" style="width:100%">Upgrade to {{ p.name }}</button></form>
       {% else %}
-        <a class="btn" href="mailto:{{ settings.sales_email }}?subject=SemanticOne%20{{ p.name }}%20plan%20for%20{{ org.slug }}">Contact sales</a>
+        <a class="btn" href="/contact?plan={{ p.key }}&amp;workspace={{ org.slug }}">{{ 'Talk to sales' if not p.self_serve else 'Request ' + p.name }}</a>
       {% endif %}
     {% endif %}
   </div>
   {% endfor %}
 </div>
-{% if not billing_enabled %}<p class="muted small" style="margin-top:14px">Online checkout is not configured on this deployment, so upgrades are handled by sales.</p>{% endif %}
+{% if not billing_enabled %}<p class="muted small" style="margin-top:14px">Upgrades are handled by our team: send a request and we'll set up your plan and invoice.</p>{% endif %}
 {% endblock %}

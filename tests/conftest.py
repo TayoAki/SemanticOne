@@ -11,6 +11,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["APP_BASE_URL"] = "http://testserver"
 os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test"
+os.environ["ADMIN_EMAILS"] = "owner@example.com"
 os.environ["STRIPE_PRICE_PRO"] = "price_pro_test"
 os.environ["STRIPE_PRICE_BUSINESS"] = "price_business_test"
 

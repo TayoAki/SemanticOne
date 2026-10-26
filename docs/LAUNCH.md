@@ -15,13 +15,17 @@ Verified on the live site:
 - Sign-up, the sample model, explorer queries, the unsafe-query refusal, API keys, the REST API and MCP (including with the official MCP SDK client).
 - HSTS and security headers.
 
-Still to do (each needs your accounts or decisions):
-1. `SALES_EMAIL` and `SUPPORT_EMAIL`. Until set, "Contact sales" points at a placeholder address.
-2. Stripe keys and prices (section 1) to turn on self-serve upgrades. Until then, sell sales-led: invoice the customer and run `semanticone set-plan <workspace> pro` in the service shell (`railway ssh`).
-3. `SMTP_*` for password-reset and invitation emails. Until then, invite links appear on the Team page to copy and share.
-4. Custom domain (Railway → service → Settings → Networking), then update `APP_BASE_URL`.
-5. Back up `/data/instance_keys.json` (`railway ssh` → `cat /data/instance_keys.json` into your password manager).
-6. A smoke-test workspace (`launch-smoke-test`, user `smoke-test-1793045881@example.com`, API key revoked) was created while verifying the deployment. Delete it from the database if you like.
+How to sell today (no extra setup):
+1. Sign up at the live URL with the email in `ADMIN_EMAILS`. That account gets the **Admin** console (`/admin`).
+2. Prospects use **Talk to sales**: the pricing page, the in-app billing page and `/contact`. Leads appear under Admin → Leads.
+3. Invoice them however you like (Stripe Invoicing, PayPal, bank transfer), then set their plan under Admin → Workspaces.
+4. For self-serve card payments, paste your Stripe secret key under Admin → Overview → Payments. The app creates the Pro and Business prices, the webhook and the customer portal itself. Try an `sk_test_` key first (card 4242 4242 4242 4242), then switch to `sk_live_`.
+
+Recommended next (each needs your accounts or decisions):
+- `SALES_EMAIL` plus `SMTP_*`, so lead alerts, password resets and invites are emailed. Until then leads wait in the Admin console, invite links are copied from the Team page, and password resets need SMTP.
+- A custom domain (Railway → service → Settings → Networking), then update `APP_BASE_URL`. If Stripe is already connected, reconnect it so the webhook points at the new domain.
+- Back up `/data/instance_keys.json`: `railway ssh` → `cat /data/instance_keys.json`, then store it in your password manager.
+- A smoke-test workspace (`launch-smoke-test`, user `smoke-test-1793045881@example.com`, API key revoked) was created while verifying the deployment. Delete it if you like.
 
 **Zero-downtime deploys.** A Railway service with a volume can't run two deployments at once, so each deploy has a few seconds of downtime. To remove it:
 - Copy the two values from `/data/instance_keys.json` into the `SECRET_KEY` and `ENCRYPTION_KEY` service variables.

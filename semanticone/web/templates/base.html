@@ -22,6 +22,7 @@
         <a href="/app/billing" class="{{ 'active' if path.startswith('/app/billing') }}">Billing</a>
         <a href="/app/settings" class="{{ 'active' if path.startswith('/app/settings') }}">Team</a>
         <a href="/docs">Docs</a>
+        {% if is_platform_admin %}<a href="/admin">Admin</a>{% endif %}
       </nav>
       <div class="right-nav">
         {% if memberships|length > 1 %}
@@ -48,6 +49,8 @@
         <a href="/#features">Product</a>
         <a href="/pricing">Pricing</a>
         <a href="/docs">Docs</a>
+        <a href="/contact">Contact</a>
+        {% if is_platform_admin %}<a href="/admin" class="{{ 'active' if request.url.path.startswith('/admin') }}">Admin</a>{% endif %}
       </nav>
       <div class="right-nav">
         {% if user %}

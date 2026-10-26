@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Talk to sales · SemanticOne{% endblock %}
+{% block content %}
+<div class="card auth-card" style="max-width:560px">
+  <h1>Talk to sales</h1>
+  <p class="muted">Upgrades, invoicing, Enterprise deployments or a demo. We usually reply within one business day.</p>
+  {% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+  <form method="post" action="/contact">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="workspace" value="{{ workspace }}">
+    <div style="position:absolute;left:-10000px" aria-hidden="true"><label for="website">Website</label><input id="website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+    <div class="grid cols-2">
+      <div class="field"><label for="name">Name</label><input id="name" name="name" type="text" autocomplete="name" value="{{ form.name or '' }}"></div>
+      <div class="field"><label for="email">Work email</label><input id="email" name="email" type="email" required autocomplete="email" value="{{ form.email or '' }}"></div>
+    </div>
+    <div class="grid cols-2">
+      <div class="field"><label for="company">Company</label><input id="company" name="company" type="text" autocomplete="organization" value="{{ form.company or '' }}"></div>
+      <div class="field"><label for="plan">Interested in</label>
+        <select id="plan" name="plan">
+          <option value="">Not sure yet</option>
+          {% for p in plans if p.key != 'free' %}<option value="{{ p.key }}" {{ 'selected' if p.key == plan }}>{{ p.name }} ({{ p.price_label }})</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="field"><label for="message">How can we help?</label><textarea id="message" name="message" rows="5" placeholder="Team size, warehouse, what you want AI agents to answer…">{{ form.message or '' }}</textarea></div>
+    <button class="btn primary" type="submit" style="width:100%">Send</button>
+  </form>
+</div>
+{% endblock %}

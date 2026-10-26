@@ -60,14 +60,16 @@ class Settings:
     support_email: str = field(default_factory=lambda: os.environ.get("SUPPORT_EMAIL", "support@example.com"))
     legal_entity: str = field(default_factory=lambda: os.environ.get("LEGAL_ENTITY", "SemanticOne"))
     signups_enabled: bool = field(default_factory=lambda: _bool("SIGNUPS_ENABLED", True))
+    # Operators of this deployment (comma-separated emails); they get the /admin console.
+    admin_emails: frozenset[str] = field(
+        default_factory=lambda: frozenset(
+            e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()
+        )
+    )
 
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
-
-    @property
-    def billing_enabled(self) -> bool:
-        return bool(self.stripe_secret_key and self.stripe_price_pro)
 
     @property
     def secure_cookies(self) -> bool:

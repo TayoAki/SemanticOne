@@ -19,6 +19,6 @@
   <h3>Sub-processors</h3>
   <p>Hosting provider, payment processor and email provider, each under data processing terms.</p>
   <h3>Retention and deletion</h3>
-  <p>Deleting a model or connection removes it immediately. To delete your account and workspace data, email <a href="mailto:{{ settings.support_email }}">{{ settings.support_email }}</a>.</p>
+  <p>Deleting a model or connection removes it immediately. To delete your account and workspace data, email {% if settings.support_email.endswith('@example.com') %}<a href="/contact">our contact form</a>{% else %}<a href="mailto:{{ settings.support_email }}">{{ settings.support_email }}</a>{% endif %}.</p>
 </div>
 {% endblock %}

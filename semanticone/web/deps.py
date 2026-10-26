@@ -113,6 +113,16 @@ class Ctx:
             raise HTTPException(status_code=403, detail="Only workspace admins can do this.")
 
 
+def is_platform_admin(user: User | None) -> bool:
+    return user is not None and user.email.lower() in get_settings().admin_emails
+
+
+def require_platform_admin(user: User = Depends(require_user)) -> User:
+    if not is_platform_admin(user):
+        raise HTTPException(status_code=404)
+    return user
+
+
 def require_ctx(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)) -> Ctx:
     memberships = list(db.scalars(select(Membership).where(Membership.user_id == user.id).order_by(Membership.id)))
     if not memberships:
@@ -132,6 +142,7 @@ def render(request: Request, template: str, ctx: Ctx | None = None, status_code:
         "flashes": pop_flash(request),
         "user": ctx.user if ctx else context.pop("user", None),
     }
+    base["is_platform_admin"] = is_platform_admin(base["user"])
     if ctx is not None:
         base.update(
             {

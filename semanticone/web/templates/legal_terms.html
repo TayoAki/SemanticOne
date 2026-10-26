@@ -21,6 +21,6 @@
   <h3>8. Trademarks</h3>
   <p>Apache, Apache Ossie and related marks are trademarks of the Apache Software Foundation. SemanticOne is an independent product and is not affiliated with or endorsed by the ASF.</p>
   <h3>9. Contact</h3>
-  <p>Questions: <a href="mailto:{{ settings.support_email }}">{{ settings.support_email }}</a>.</p>
+  <p>Questions: {% if settings.support_email.endswith('@example.com') %}<a href="/contact">our contact form</a>{% else %}<a href="mailto:{{ settings.support_email }}">{{ settings.support_email }}</a>{% endif %}.</p>
 </div>
 {% endblock %}

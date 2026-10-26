@@ -47,14 +47,23 @@ The app is a single container (`Dockerfile`) plus PostgreSQL.
 
 **Railway:** `railway.json` is included (Dockerfile build, pre-deploy migration, `/healthz` health check). Create a project with a PostgreSQL service and this repo, attach a volume at `/data`, set `RAILWAY_RUN_UID=0` (Railway volumes are root-owned), then set the variables. **Anywhere else:** any container host (Fly.io, Render, ECS, Cloud Run, Kubernetes) works the same way.
 
-### Stripe
+### Operator console and Stripe
+
+Set `ADMIN_EMAILS` to your email. Signing up with that address unlocks `/admin`:
+- **Overview:** estimated MRR, usage and the latest leads.
+- **Workspaces:** set plans for invoiced customers.
+- **Leads:** requests from the public "Talk to sales" form (`/contact`).
+
+**One-paste Stripe:** paste a Stripe secret key under Admin → Payments. SemanticOne then creates the Pro and Business prices, a webhook endpoint (with its signing secret) and a customer portal configuration, all stored encrypted.
+
+Alternatively, configure Stripe with environment variables, which take precedence:
 
 1. In Stripe, create two recurring prices (Pro and Business) and set `STRIPE_PRICE_PRO` / `STRIPE_PRICE_BUSINESS`.
 2. Set `STRIPE_SECRET_KEY`.
 3. Add a webhook endpoint `https://your-domain/webhooks/stripe` for `checkout.session.completed`, `customer.subscription.created|updated|deleted` and `invoice.payment_failed`, then set `STRIPE_WEBHOOK_SECRET`.
 4. Enable the Customer Portal (plan switching, cancellation, invoices).
 
-Without Stripe settings the billing page routes upgrades to `SALES_EMAIL`, and you can set plans manually for invoiced customers: `semanticone set-plan <workspace-id> pro|business|enterprise`.
+Without Stripe, upgrade buttons open the "Talk to sales" form; set plans for invoiced customers under Admin → Workspaces (or `semanticone set-plan <workspace-id> pro|business|enterprise`).
 
 ## Configuration
 

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Thanks · SemanticOne{% endblock %}
+{% block content %}
+<div class="card auth-card" style="text-align:center">
+  <h1>Thanks, we'll be in touch</h1>
+  <p class="muted">Your message reached our team. Meanwhile, you can keep exploring on the free plan.</p>
+  <a class="btn primary" href="{{ '/app' if user else '/signup' }}">{{ 'Back to the app' if user else 'Start free' }}</a>
+</div>
+{% endblock %}
