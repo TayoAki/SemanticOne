@@ -1,5 +1,35 @@
 # Launch guide: from this repo to paying customers
 
+## 0. Current deployment
+
+Live at **https://semanticone.up.railway.app**: Railway project `semanticone`, service `web`, deploying the
+`claude/busy-cannon-gjs04b` branch on every push.
+
+Already in place:
+- PostgreSQL service, wired in as `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+- A 1 GB volume at `/data`, with `RAILWAY_RUN_UID=0` so the app can write to it.
+- `ENVIRONMENT=production`, `APP_BASE_URL`, and the `/healthz` health check.
+- Signing and encryption keys, generated on first boot in `/data/instance_keys.json`. They never left the server.
+
+Verified on the live site:
+- Sign-up, the sample model, explorer queries, the unsafe-query refusal, API keys, the REST API and MCP (including with the official MCP SDK client).
+- HSTS and security headers.
+
+Still to do (each needs your accounts or decisions):
+1. `SALES_EMAIL` and `SUPPORT_EMAIL`. Until set, "Contact sales" points at a placeholder address.
+2. Stripe keys and prices (section 1) to turn on self-serve upgrades. Until then, sell sales-led: invoice the customer and run `semanticone set-plan <workspace> pro` in the service shell (`railway ssh`).
+3. `SMTP_*` for password-reset and invitation emails. Until then, invite links appear on the Team page to copy and share.
+4. Custom domain (Railway → service → Settings → Networking), then update `APP_BASE_URL`.
+5. Back up `/data/instance_keys.json` (`railway ssh` → `cat /data/instance_keys.json` into your password manager).
+6. A smoke-test workspace (`launch-smoke-test`, user `smoke-test-1793045881@example.com`, API key revoked) was created while verifying the deployment. Delete it from the database if you like.
+
+**Zero-downtime deploys.** A Railway service with a volume can't run two deployments at once, so each deploy has a few seconds of downtime. To remove it:
+- Copy the two values from `/data/instance_keys.json` into the `SECRET_KEY` and `ENCRYPTION_KEY` service variables.
+- Remove the volume and `RAILWAY_RUN_UID`.
+- Optionally scale to 2 replicas.
+
+The sample warehouse file is rebuilt automatically in each container.
+
 ## 1. Go live (about a day)
 
 - [ ] Deploy (see README). Railway: new project → add PostgreSQL → deploy this repo → set variables → add a custom domain.
