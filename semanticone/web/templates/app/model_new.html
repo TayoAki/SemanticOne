@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}New model · SemanticOne{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>New semantic model</h1><p class="muted">Paste or upload an Apache Ossie document (YAML or JSON). Older 0.1 documents are migrated automatically.</p></div>
+  <div class="row"><a class="btn" href="/app/models/new?template=sample">Load sample</a><a class="btn" href="/app/models/new">Load blank template</a></div>
+</div>
+{% for n in notes %}<div class="flash info">{{ n }}</div>{% endfor %}
+{% include "app/_issues.html" %}
+<form method="post" action="/app/models/new" enctype="multipart/form-data" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="grid cols-2">
+    <div class="field">
+      <label for="file">Upload a file</label>
+      <input id="file" name="file" type="file" accept=".yaml,.yml,.json">
+      <div class="hint">If you choose a file it replaces the editor contents.</div>
+    </div>
+    <div class="field">
+      <label for="connection_id">Warehouse connection</label>
+      <select id="connection_id" name="connection_id">
+        <option value="">None yet</option>
+        {% for c in connections %}<option value="{{ c.id }}" {{ 'selected' if c.kind == 'demo' and loop.first }}>{{ c.name }}</option>{% endfor %}
+      </select>
+      <div class="hint">Queries run here. You can change it later.</div>
+    </div>
+  </div>
+  <div class="field">
+    <label for="content">Model document</label>
+    <textarea id="content" name="content" class="code" spellcheck="false">{{ content }}</textarea>
+  </div>
+  <button class="btn primary" type="submit">Validate and create</button>
+</form>
+{% endblock %}

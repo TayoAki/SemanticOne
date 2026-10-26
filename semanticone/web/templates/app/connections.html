@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Connections · SemanticOne{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Warehouse connections</h1><p class="muted">Queries run in your warehouse. Use a read-only role limited to the schemas your models use.</p></div></div>
+<div class="table-wrap" style="margin-bottom:20px">
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Target</th><th>Added</th><th></th></tr></thead>
+    <tbody>
+    {% for c in connections %}
+      <tr>
+        <td><strong>{{ c.name }}</strong></td>
+        <td>{{ kinds[c.kind].label if c.kind in kinds else c.kind }}</td>
+        <td class="small mono">{{ redacted[c.id] or '—' }}</td>
+        <td class="small muted nowrap">{{ c.created_at|dt }}</td>
+        <td class="right nowrap">
+          <form class="inline" method="post" action="/app/connections/{{ c.id }}/test"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn small" type="submit">Test</button></form>
+          {% if membership.is_admin %}
+          <form class="inline" method="post" action="/app/connections/{{ c.id }}/delete" onsubmit="return confirm('Delete {{ c.name }}?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn small danger" type="submit">Delete</button></form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="empty">No connections yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if membership.is_admin %}
+<form class="card" method="post" action="/app/connections">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h3>Add a connection</h3>
+  {% if not plan.warehouse_connections %}
+    <div class="flash info">Connecting your own warehouse is part of the paid plans. <a href="/app/billing">Upgrade</a> to continue; the sample warehouse stays free.</div>
+  {% endif %}
+  <div class="grid cols-2">
+    <div class="field"><label for="name">Name</label><input id="name" name="name" type="text" required placeholder="Production Snowflake"></div>
+    <div class="field">
+      <label for="kind">Type</label>
+      <select id="kind" name="kind">
+        {% for key, k in kinds.items() if key != 'demo' %}<option value="{{ key }}" data-example="{{ k.example }}" data-driver="{{ k.driver }}">{{ k.label }}</option>{% endfor %}
+        <option value="demo" data-example="" data-driver="">Another sample warehouse</option>
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <label for="url">Connection URL</label>
+    <input id="url" name="url" type="password" autocomplete="off" spellcheck="false">
+    <div class="hint" id="url-hint"></div>
+  </div>
+  <button class="btn primary" type="submit">Add and test</button>
+</form>
+<script>
+(() => {
+  const kind = document.getElementById("kind"), hint = document.getElementById("url-hint"), url = document.getElementById("url");
+  const update = () => {
+    const opt = kind.selectedOptions[0];
+    url.placeholder = opt.dataset.example || "";
+    url.disabled = kind.value === "demo";
+    hint.textContent = opt.dataset.example ? `Example: ${opt.dataset.example}` + (opt.dataset.driver ? ` · driver: ${opt.dataset.driver}` : "") : "No URL needed.";
+  };
+  kind.addEventListener("change", update); update();
+})();
+</script>
+{% endif %}
+{% endblock %}

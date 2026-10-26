@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Pricing · SemanticOne{% endblock %}
+{% block content %}
+<section class="hero" style="padding-bottom:24px">
+  <h1>Pricing that scales with your data team</h1>
+  <p class="lead">Every plan includes the validator, version history, the explorer, the REST API and the MCP server.</p>
+</section>
+<div class="grid cols-4">
+  {% for p in plans %}
+  <div class="card price-card {{ 'featured' if p.key == 'pro' }}">
+    <h3>{{ p.name }} {% if p.key == 'pro' %}<span class="badge accent">Most popular</span>{% endif %}</h3>
+    <div class="price">{{ p.price_label }}</div>
+    <p class="muted small">{{ p.tagline }}</p>
+    <ul>
+      {% for f in p.features %}<li>{{ f }}</li>{% endfor %}
+    </ul>
+    {% if p.self_serve %}
+      <a class="btn {{ 'primary' if p.key == 'pro' }}" href="{{ '/app/billing' if user else '/signup' }}">{{ 'Start free' if p.key == 'free' else 'Choose ' + p.name }}</a>
+    {% else %}
+      <a class="btn" href="mailto:{{ settings.sales_email }}?subject=SemanticOne%20Enterprise">Contact sales</a>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+<div class="card" style="margin-top:24px">
+  <h3>Questions</h3>
+  <p><strong>What counts as a query?</strong> Each successful metrics query from the explorer, REST API or an AI agent through MCP. Validation, compiling to SQL and failed queries are free.</p>
+  <p><strong>Do you store our data?</strong> No. Queries run in your warehouse and results are streamed back; we store your model definitions, encrypted connection credentials and query logs (the SQL and row counts, not result rows).</p>
+  <p style="margin:0"><strong>Can we self-host?</strong> Yes, on Enterprise. SemanticOne ships as a single container image.</p>
+</div>
+{% endblock %}

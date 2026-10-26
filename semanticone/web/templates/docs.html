@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Docs · SemanticOne{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Documentation</h1><p class="muted">Everything you need to model metrics once and serve them everywhere.</p></div></div>
+<div class="grid sidebar">
+  <nav class="card small docs-nav" style="position:sticky; top:72px">
+    <div><a href="#quickstart">Quick start</a></div>
+    <div><a href="#models">Semantic models</a></div>
+    <div><a href="#queries">Query format</a></div>
+    <div><a href="#correctness">How results stay correct</a></div>
+    <div><a href="#api">REST API</a></div>
+    <div><a href="#mcp">AI agents (MCP)</a></div>
+    <div><a href="#connections">Warehouse connections</a></div>
+    <div><a href="#import">Importing from other tools</a></div>
+    <div><a href="#security">Security</a></div>
+  </nav>
+  <div>
+    <section class="card" id="quickstart">
+      <h2>Quick start</h2>
+      <ol>
+        <li><a href="/signup">Create a workspace</a>. It comes with the <em>Acme Commerce</em> sample model attached to a sample warehouse.</li>
+        <li>Open the model and go to <strong>Explore</strong>. Pick metrics and dimensions and press <span class="kbd">Run</span>.</li>
+        <li>Create an API key under <strong>API &amp; AI agents</strong> and connect an AI agent through MCP, or call the REST API.</li>
+        <li>On a paid plan, add a warehouse connection, upload your own model and attach the connection in model settings.</li>
+      </ol>
+    </section>
+
+    <section class="card" id="models">
+      <h2>Semantic models</h2>
+      <p>Models use the <a href="https://github.com/apache/ossie" rel="noopener">Apache Ossie</a> core format (version <code>0.2.0.dev0</code>): one model per YAML or JSON document with <code>datasets</code>, <code>fields</code>, <code>relationships</code> and <code>metrics</code>. Documents in the older 0.1 shape with a <code>semantic_model</code> wrapper are migrated automatically.</p>
+<pre><code>version: 0.2.0.dev0
+name: Sales
+datasets:
+  - name: orders
+    source: analytics.public.orders      # table, view, or a SELECT query
+    primary_key: [order_id]
+    fields:
+      - name: order_id
+        expression: {sql: id}            # written over source columns
+      - name: ordered_at
+        expression: {sql: created_at}
+        datatype: DateTime
+        dimension: {is_time: true}
+      - name: amount
+        expression: {sql: amount_cents / 100.0}
+  - name: customers
+    source: analytics.public.customers
+    primary_key: [customer_id]
+    fields:
+      - name: customer_id
+        expression: {sql: id}
+      - name: country
+        expression: {sql: country_code}
+        dimension: {}
+relationships:
+  - name: orders_to_customers
+    from: orders            # the many side
+    to: customers           # the one side
+    from_columns: [customer_id]
+    to_columns: [customer_id]
+metrics:
+  - name: revenue
+    expression: {sql: SUM(orders.amount)}   # model metrics use dataset.field
+    ai_context: {synonyms: [sales, GMV]}</code></pre>
+      <p>Expressions are chosen per engine: an entry in <code>dialects</code> matching your warehouse (for example <code>SNOWFLAKE</code>) wins, otherwise the portable <code>sql</code> / <code>OSSIE_SQL_2026</code> / <code>ANSI_SQL</code> form is translated to the warehouse's SQL dialect. Opaque dialects such as DAX or MAQL are stored but not executed.</p>
+      <p>Every save is validated (JSON Schema plus name resolution: keys, relationships and metric references must point to declared fields). Errors block the save; warnings tell you what cannot be queried yet.</p>
+    </section>
+
+    <section class="card" id="queries">
+      <h2>Query format</h2>
+<pre><code>{
+  "metrics": ["revenue", "orders.order_count"],      // model metrics, or dataset.metric
+  "dimensions": ["customers.country", "orders.ordered_at__month"],
+  "filters": [
+    {"field": "orders.ordered_at", "op": ">=", "value": "2026-01-01"},
+    {"field": "customers.country", "op": "in", "value": ["US", "CA"]},
+    {"field": "revenue", "op": ">", "value": 1000}    // metric filters apply after aggregation
+  ],
+  "order_by": ["-revenue"],
+  "limit": 100
+}</code></pre>
+      <p>Time grains: <code>hour</code>, <code>day</code>, <code>week</code>, <code>month</code>, <code>quarter</code>, <code>year</code> (as a <code>__grain</code> suffix or <code>{"field": ..., "grain": ...}</code>). Filter ops: <code>=, !=, &gt;, &gt;=, &lt;, &lt;=, in, not_in, between, like, not_like, is_null, is_not_null</code>. Values are always sent as bound literals, never spliced as SQL.</p>
+    </section>
+
+    <section class="card" id="correctness">
+      <h2>How results stay correct</h2>
+      <p>Relationships point from the many side to the one side. The engine evaluates every aggregate inside a metric from a dataset it aggregates (its <em>root</em>) and joins only along many-to-one paths from there, so rows are never duplicated. When a query mixes metrics from different fact tables, each root is aggregated separately by the requested dimensions and the results are combined on those dimensions. Duplicate-insensitive aggregates (<code>COUNT(DISTINCT ...)</code>, <code>MIN</code>, <code>MAX</code>) may be rooted further out when needed, which is how "orders containing a product category" is answered.</p>
+      <p>If a question cannot be answered without double counting (for example, support tickets by product category when tickets don't link to products), the query is refused with an explanation rather than returning an inflated number. Window metrics such as running totals are supported; they require grouping by the fields used in their window.</p>
+    </section>
+
+    <section class="card" id="api">
+      <h2>REST API</h2>
+      <p>Send <code>Authorization: Bearer so_live_...</code>. Interactive reference: <a href="/api/docs">/api/docs</a>.</p>
+<pre><code>curl -s {{ settings.base_url }}/api/v1/models/acme-commerce/query \
+  -H "Authorization: Bearer $SEMANTICONE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"metrics": ["total_revenue"], "dimensions": ["orders.ordered_at__month"]}'</code></pre>
+      <table>
+        <tr><th>Endpoint</th><th>Purpose</th></tr>
+        <tr><td><code>GET /api/v1/models</code></td><td>List models</td></tr>
+        <tr><td><code>POST /api/v1/models</code></td><td>Create a model from <code>{"content": "...yaml..."}</code></td></tr>
+        <tr><td><code>GET /api/v1/models/{slug}</code></td><td>Metrics, dimensions and relationships</td></tr>
+        <tr><td><code>GET|PUT /api/v1/models/{slug}/document</code></td><td>Download or save a new version (CI-friendly)</td></tr>
+        <tr><td><code>POST /api/v1/validate</code></td><td>Validate a document without saving</td></tr>
+        <tr><td><code>POST /api/v1/models/{slug}/compile</code></td><td>Get SQL for a query</td></tr>
+        <tr><td><code>POST /api/v1/models/{slug}/query</code></td><td>Run a query, get rows</td></tr>
+        <tr><td><code>GET /api/v1/usage</code></td><td>Plan limits and usage</td></tr>
+      </table>
+    </section>
+
+    <section class="card" id="mcp">
+      <h2>AI agents (MCP)</h2>
+      <p>SemanticOne is a remote <a href="https://modelcontextprotocol.io" rel="noopener">Model Context Protocol</a> server at <code>{{ settings.base_url }}/mcp</code> (Streamable HTTP). Authenticate with an API key as a bearer token. Tools: <code>list_models</code>, <code>describe_model</code>, <code>query_metrics</code>, <code>compile_sql</code>, <code>validate_model</code>.</p>
+      <p>Claude Code:</p>
+<pre><code>claude mcp add --transport http semanticone {{ settings.base_url }}/mcp \
+  --header "Authorization: Bearer $SEMANTICONE_API_KEY"</code></pre>
+      <p>Clients that take a JSON config (Cursor, Claude Desktop via <code>mcp-remote</code>, and others):</p>
+<pre><code>{
+  "mcpServers": {
+    "semanticone": {
+      "url": "{{ settings.base_url }}/mcp",
+      "headers": {"Authorization": "Bearer so_live_..."}
+    }
+  }
+}</code></pre>
+      <p>Write good <code>description</code> and <code>ai_context</code> (instructions, synonyms, examples) on metrics and fields: agents read them through <code>describe_model</code>.</p>
+    </section>
+
+    <section class="card" id="connections">
+      <h2>Warehouse connections</h2>
+      <p>Paid plans can connect PostgreSQL, Redshift, Snowflake, BigQuery, Databricks SQL and MySQL with a SQLAlchemy URL. Use a read-only role limited to the schemas your models use. Credentials are encrypted with a key held only by the application. Hosts that resolve to private networks are blocked on the hosted service.</p>
+    </section>
+
+    <section class="card" id="import">
+      <h2>Importing from other tools</h2>
+      <p>The Apache Ossie project publishes reference converters for dbt, Snowflake, Databricks, Cube, Salesforce/Tableau, ThoughtSpot, Sigma, Omni, Hex, Holistics and others at <a href="https://github.com/apache/ossie-converters" rel="noopener">apache/ossie-converters</a>. Convert your existing semantic layer to Ossie YAML with them, then upload the file here or <code>PUT</code> it to the API from CI. Downloads are plain Ossie, so models move the other way just as easily.</p>
+    </section>
+
+    <section class="card" id="security">
+      <h2>Security</h2>
+      <ul>
+        <li>Passwords hashed with scrypt; API keys stored as SHA-256 hashes and shown once.</li>
+        <li>Warehouse credentials encrypted at rest (Fernet / AES-128 + HMAC).</li>
+        <li>Every query is a single generated <code>SELECT</code>; model expressions cannot contain statements or subqueries, and filter values are literals, never SQL text.</li>
+        <li>The sample warehouse runs in a sandboxed, read-only DuckDB with file and network access disabled.</li>
+        <li>CSRF protection on every form, secure session cookies over HTTPS, workspace isolation on every query.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ model.name }} · SemanticOne{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+{% include "app/_model_head.html" %}
+<form method="post" action="/app/models/{{ model.slug }}/edit" id="edit-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="grid editor">
+    <div class="card" style="padding:12px">
+      <textarea id="content" name="content" class="code" spellcheck="false" aria-label="Model document">{{ content }}</textarea>
+    </div>
+    <div>
+      <div class="card">
+        <h3>Save a new version</h3>
+        <div class="field"><label for="message">Change note</label><input id="message" name="message" type="text" placeholder="Add churn metrics" value="{{ message or '' }}"></div>
+        <button class="btn primary" type="submit" style="width:100%">Validate and save</button>
+        <p class="hint">Saving is blocked while there are errors. Warnings are allowed.</p>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between"><h3 style="margin:0">Live validation</h3><span id="status" class="badge">…</span></div>
+        <div id="live-issues" style="margin-top:10px">{% include "app/_issues.html" %}</div>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const area = document.getElementById("content");
+  const status = document.getElementById("status");
+  const box = document.getElementById("live-issues");
+  const csrf = document.querySelector('meta[name="csrf-token"]').content;
+  area.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const s = area.selectionStart, end = area.selectionEnd;
+      area.value = area.value.slice(0, s) + "  " + area.value.slice(end);
+      area.selectionStart = area.selectionEnd = s + 2;
+    }
+  });
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  let timer;
+  async function validate() {
+    status.textContent = "Checking…"; status.className = "badge";
+    try {
+      const res = await fetch("/app/models/{{ model.slug }}/validate", {
+        method: "POST", headers: {"Content-Type": "application/json", "X-CSRF-Token": csrf},
+        body: JSON.stringify({content: area.value}),
+      });
+      const data = await res.json();
+      const errors = data.issues.filter((i) => i.severity === "error").length;
+      const warnings = data.issues.length - errors;
+      status.textContent = errors ? `${errors} error${errors > 1 ? "s" : ""}` : warnings ? `${warnings} warning${warnings > 1 ? "s" : ""}` : "Valid";
+      status.className = "badge " + (errors ? "err" : warnings ? "warn" : "ok");
+      const notes = (data.notes || []).map((n) => `<div class="flash info">${esc(n)}</div>`).join("");
+      box.innerHTML = notes + (data.issues.length ? '<ul class="issues">' + data.issues.map((i) =>
+        `<li class="${i.severity}"><span class="path">${esc(i.severity.toUpperCase())} · ${esc(i.path)}</span>${esc(i.message)}</li>`).join("") + "</ul>"
+        : '<p class="muted">No issues found.</p>');
+    } catch (err) { status.textContent = "Offline"; }
+  }
+  area.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(validate, 500); });
+  validate();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Billing · SemanticOne{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Plan &amp; billing</h1><p class="muted">You're on <strong>{{ plan.name }}</strong>{% if org.subscription_status %} · subscription {{ org.subscription_status }}{% endif %}.</p></div>
+  {% if billing_enabled and org.stripe_customer_id and membership.is_admin %}
+  <form method="post" action="/app/billing/portal"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn" type="submit">Manage billing &amp; invoices</button></form>
+  {% endif %}
+</div>
+{% if request.query_params.get('checkout') == 'success' %}<div class="flash success">Thanks! Your subscription is being activated; this page updates as soon as payment is confirmed.</div>{% endif %}
+{% if org.subscription_status == 'past_due' %}<div class="flash error">Your last payment failed. Update your card in the billing portal to keep paid features.</div>{% endif %}
+<div class="grid cols-4" style="margin-bottom:20px">
+  <div class="card stat"><div class="label">Queries this month</div><div class="value">{{ '{:,}'.format(usage.queries) }}</div><div class="muted small">of {{ fmt_limit(plan.monthly_queries) }}</div></div>
+  <div class="card stat"><div class="label">Models</div><div class="value">{{ usage.models }}</div><div class="muted small">of {{ fmt_limit(plan.max_models) }}</div></div>
+  <div class="card stat"><div class="label">Seats</div><div class="value">{{ usage.members }}</div><div class="muted small">of {{ fmt_limit(plan.max_members) }}</div></div>
+  <div class="card stat"><div class="label">Max rows / query</div><div class="value">{{ fmt_limit(plan.max_rows) }}</div></div>
+</div>
+<div class="grid cols-4">
+  {% for p in plans %}
+  <div class="card price-card {{ 'featured' if p.key == plan.key }}">
+    <h3>{{ p.name }} {% if p.key == plan.key %}<span class="badge ok">Current</span>{% endif %}</h3>
+    <div class="price">{{ p.price_label }}</div>
+    <ul class="small">{% for f in p.features %}<li>{{ f }}</li>{% endfor %}</ul>
+    {% if p.key != plan.key and p.key != 'free' %}
+      {% if p.self_serve and billing_enabled and price_available[p.key] and membership.is_admin %}
+        <form method="post" action="/app/billing/checkout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="plan" value="{{ p.key }}"><button class="btn primary" type="submit" style="width:100%">Upgrade to {{ p.name }}</button></form>
+      {% else %}
+        <a class="btn" href="mailto:{{ settings.sales_email }}?subject=SemanticOne%20{{ p.name }}%20plan%20for%20{{ org.slug }}">Contact sales</a>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% if not billing_enabled %}<p class="muted small" style="margin-top:14px">Online checkout is not configured on this deployment, so upgrades are handled by sales.</p>{% endif %}
+{% endblock %}

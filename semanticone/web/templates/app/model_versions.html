@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}History · {{ model.name }} · SemanticOne{% endblock %}
+{% block content %}
+{% include "app/_model_head.html" %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Version</th><th>Note</th><th>Author</th><th>Saved</th><th></th></tr></thead>
+    <tbody>
+    {% for v in versions %}
+      <tr>
+        <td><a href="/app/models/{{ model.slug }}/versions/{{ v.version }}">v{{ v.version }}</a> {% if v.version == model.current_version %}<span class="badge ok">current</span>{% endif %}</td>
+        <td>{{ v.message }}</td>
+        <td class="small">{{ v.created_by.email if v.created_by else 'API' }}</td>
+        <td class="small muted nowrap">{{ v.created_at|dt }}</td>
+        <td class="right nowrap">
+          <a class="btn small" href="/app/models/{{ model.slug }}/download?version={{ v.version }}">Download</a>
+          {% if v.version != model.current_version %}
+          <form class="inline" method="post" action="/app/models/{{ model.slug }}/versions/{{ v.version }}/restore">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="btn small" type="submit">Restore</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

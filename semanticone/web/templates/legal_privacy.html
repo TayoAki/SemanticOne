@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy · SemanticOne{% endblock %}
+{% block content %}
+<div class="card" style="max-width:820px;margin:0 auto">
+  <h1>Privacy Policy</h1>
+  <p class="muted small">How {{ settings.legal_entity }} handles personal and customer data in SemanticOne.</p>
+  <h3>What we collect</h3>
+  <ul>
+    <li><strong>Account data:</strong> name, email, hashed password, workspace membership.</li>
+    <li><strong>Workspace content:</strong> semantic model documents and their version history.</li>
+    <li><strong>Connection credentials:</strong> stored encrypted and used only to run your queries.</li>
+    <li><strong>Usage data:</strong> the queries you run (request, generated SQL, row count, timing), used for metering, limits and support.</li>
+    <li><strong>Billing data:</strong> handled by our payment processor; we store only customer and subscription identifiers.</li>
+  </ul>
+  <h3>What we don't collect</h3>
+  <p>Query result rows are streamed back to you and are not stored.</p>
+  <h3>How we use it</h3>
+  <p>To provide and secure the service, meter usage, bill, and contact you about your account. We do not sell personal data.</p>
+  <h3>Sub-processors</h3>
+  <p>Hosting provider, payment processor and email provider, each under data processing terms.</p>
+  <h3>Retention and deletion</h3>
+  <p>Deleting a model or connection removes it immediately. To delete your account and workspace data, email <a href="mailto:{{ settings.support_email }}">{{ settings.support_email }}</a>.</p>
+</div>
+{% endblock %}

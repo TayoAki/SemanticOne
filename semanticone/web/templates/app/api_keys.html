@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}API & AI agents · SemanticOne{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>API &amp; AI agents</h1><p class="muted">Use API keys for the REST API and for AI agents connecting over MCP.</p></div></div>
+{% if new_key %}
+<div class="card" style="border-color:var(--warn)">
+  <h3>Your new API key</h3>
+  <p class="muted small">Copy it now. For security it will not be shown again.</p>
+  <div class="secret" id="new-key">{{ new_key }}</div>
+  <button class="btn small" style="margin-top:8px" onclick="navigator.clipboard.writeText(document.getElementById('new-key').textContent); this.textContent='Copied!'">Copy</button>
+</div>
+{% endif %}
+<div class="grid cols-2">
+  <div class="card">
+    <h3>Connect an AI agent (MCP)</h3>
+    <p class="small">Server URL: <code>{{ settings.base_url }}/mcp</code> · Auth: <code>Authorization: Bearer &lt;key&gt;</code></p>
+    <p class="small"><strong>Claude Code</strong></p>
+<pre><code>claude mcp add --transport http semanticone \
+  {{ settings.base_url }}/mcp \
+  --header "Authorization: Bearer {{ new_key or 'so_live_...' }}"</code></pre>
+    <p class="small"><strong>JSON config</strong> (Cursor and other clients)</p>
+<pre><code>{
+  "mcpServers": {
+    "semanticone": {
+      "url": "{{ settings.base_url }}/mcp",
+      "headers": {"Authorization": "Bearer {{ new_key or 'so_live_...' }}"}
+    }
+  }
+}</code></pre>
+    <p class="small muted">Agents get <code>list_models</code>, <code>describe_model</code>, <code>query_metrics</code>, <code>compile_sql</code> and <code>validate_model</code>. Each successful <code>query_metrics</code> call counts as one query.</p>
+  </div>
+  <div class="card">
+    <h3>REST API</h3>
+<pre><code>curl -s {{ settings.base_url }}/api/v1/models/{{ models[0].slug if models else 'your-model' }}/query \
+  -H "Authorization: Bearer $SEMANTICONE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"metrics": ["{{ 'total_revenue' if models else 'revenue' }}"], "limit": 10}'</code></pre>
+    <p class="small"><a href="/api/docs">Interactive API reference</a> · <a href="/docs#api">Guide</a></p>
+    <p class="small muted">Keep models in git and publish from CI with <code>PUT /api/v1/models/{slug}/document</code>.</p>
+  </div>
+</div>
+<div class="card">
+  <div class="row" style="justify-content:space-between"><h3 style="margin:0">Keys</h3>
+  {% if membership.is_admin %}
+  <form class="row" method="post" action="/app/api-keys">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="text" name="name" placeholder="Key name, e.g. Claude for finance team" style="width:280px">
+    <button class="btn primary" type="submit">Create key</button>
+  </form>
+  {% endif %}
+  </div>
+  <div class="table-wrap" style="margin-top:12px">
+  <table>
+    <thead><tr><th>Name</th><th>Key</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+    <tbody>
+      {% for k in keys %}
+      <tr>
+        <td>{{ k.name }}</td>
+        <td class="mono small">{{ k.prefix }}…</td>
+        <td class="small muted nowrap">{{ k.created_at|dt }}</td>
+        <td class="small muted nowrap">{{ k.last_used_at|dt }}</td>
+        <td class="right">
+          {% if k.revoked_at %}<span class="badge">revoked</span>
+          {% elif membership.is_admin %}
+          <form class="inline" method="post" action="/app/api-keys/{{ k.id }}/revoke" onsubmit="return confirm('Revoke {{ k.name }}? Apps using it will stop working.')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn small danger" type="submit">Revoke</button></form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="empty">No API keys yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

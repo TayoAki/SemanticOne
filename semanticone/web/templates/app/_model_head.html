@@ -1,0 +1,19 @@
+<div class="page-head">
+  <div>
+    <div class="muted small"><a href="/app">Models</a> /</div>
+    <h1>{{ model.name }}</h1>
+    <p class="muted">{{ model.description or 'No description.' }}</p>
+  </div>
+  <div class="row">
+    <span class="badge">v{{ model.current_version }}</span>
+    <a class="btn" href="/app/models/{{ model.slug }}/download">Download YAML</a>
+    <a class="btn primary" href="/app/models/{{ model.slug }}/explore">Explore</a>
+  </div>
+</div>
+<div class="tabs">
+  <a href="/app/models/{{ model.slug }}" class="{{ 'active' if tab == 'overview' }}">Overview</a>
+  <a href="/app/models/{{ model.slug }}/explore" class="{{ 'active' if tab == 'explore' }}">Explore</a>
+  <a href="/app/models/{{ model.slug }}/edit" class="{{ 'active' if tab == 'edit' }}">Edit</a>
+  <a href="/app/models/{{ model.slug }}/versions" class="{{ 'active' if tab == 'versions' }}">History</a>
+  <a href="/app/models/{{ model.slug }}/settings" class="{{ 'active' if tab == 'settings' }}">Settings</a>
+</div>

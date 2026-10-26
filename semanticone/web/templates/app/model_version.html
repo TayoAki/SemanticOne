@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}v{{ version.version }} · {{ model.name }} · SemanticOne{% endblock %}
+{% block content %}
+{% include "app/_model_head.html" %}
+<div class="page-head">
+  <div><h2>Version {{ version.version }}</h2><p class="muted">{{ version.message }} · {{ version.created_at|dt }}</p></div>
+  <div class="row">
+    {% if version.version != model.current_version %}
+    <form class="inline" method="post" action="/app/models/{{ model.slug }}/versions/{{ version.version }}/restore">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn" type="submit">Restore this version</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% if other %}
+<div class="card">
+  <h3>Changes since v{{ other.version }}</h3>
+  {% if diff %}
+  <div class="diff">
+    {% for line in diff %}
+      <div class="{{ 'add' if line.startswith('+') and not line.startswith('+++') else 'del' if line.startswith('-') and not line.startswith('---') else 'hunk' if line.startswith('@@') else '' }}">{{ line }}</div>
+    {% endfor %}
+  </div>
+  {% else %}<p class="muted">No differences.</p>{% endif %}
+</div>
+{% endif %}
+<details class="card"><summary>Full document</summary><pre><code>{{ version.content }}</code></pre></details>
+{% endblock %}

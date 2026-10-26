@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Usage · SemanticOne{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Usage</h1><p class="muted">Successful queries this month count toward your plan. Compiles, validation and failed queries are free.</p></div>
+<a class="btn" href="/app/billing">Plan &amp; billing</a></div>
+{% set p = usage.plan %}
+<div class="card stat" style="margin-bottom:16px">
+  <div class="label">Queries this month</div>
+  <div class="value">{{ '{:,}'.format(usage.queries) }} <span class="muted small">/ {{ fmt_limit(p.monthly_queries) }}</span></div>
+  {% if p.monthly_queries > 0 %}<div class="meter"><span style="width: {{ [100, (usage.queries * 100 / p.monthly_queries)|round]|min }}%"></span></div>{% endif %}
+</div>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>When</th><th>Source</th><th>Model</th><th>Status</th><th class="right">Rows</th><th class="right">Time</th><th></th></tr></thead>
+    <tbody>
+      {% for q in logs %}
+      <tr>
+        <td class="small muted nowrap">{{ q.created_at|dt }}</td>
+        <td><span class="badge">{{ q.source }}</span></td>
+        <td>{{ models[q.semantic_model_id].name if q.semantic_model_id in models else '—' }}</td>
+        <td>{% if q.status == 'ok' %}<span class="badge ok">ok</span>{% else %}<span class="badge err" title="{{ q.error }}">error</span><div class="small muted">{{ q.error[:160] }}</div>{% endif %}</td>
+        <td class="num">{{ q.row_count }}</td>
+        <td class="num">{{ q.duration_ms }} ms</td>
+        <td class="right"><a class="small" href="/app/usage/{{ q.id }}" target="_blank" rel="noopener">SQL</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty">No queries yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

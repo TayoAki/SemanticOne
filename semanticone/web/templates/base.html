@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SemanticOne{% endblock %}</title>
+  <meta name="description" content="SemanticOne is the hosted semantic layer for Apache Ossie models: define metrics once, query them from BI tools, APIs and AI agents.">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b5bdb'/%3E%3Ctext x='16' y='22' font-size='16' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='700'%3E1%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="topbar">
+    {% if org %}
+      <a class="brand" href="/app"><span class="brand-mark"></span>SemanticOne</a>
+      <nav>
+        {% set path = request.url.path %}
+        <a href="/app" class="{{ 'active' if path == '/app' or path.startswith('/app/models') }}">Models</a>
+        <a href="/app/connections" class="{{ 'active' if path.startswith('/app/connections') }}">Connections</a>
+        <a href="/app/api-keys" class="{{ 'active' if path.startswith('/app/api-keys') }}">API &amp; AI agents</a>
+        <a href="/app/usage" class="{{ 'active' if path.startswith('/app/usage') }}">Usage</a>
+        <a href="/app/billing" class="{{ 'active' if path.startswith('/app/billing') }}">Billing</a>
+        <a href="/app/settings" class="{{ 'active' if path.startswith('/app/settings') }}">Team</a>
+        <a href="/docs">Docs</a>
+      </nav>
+      <div class="right-nav">
+        {% if memberships|length > 1 %}
+          <form class="inline" method="post" id="switch-form" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <select aria-label="Workspace" onchange="this.form.action='/app/switch/'+this.value; this.form.submit()">
+              {% for m in memberships %}
+                <option value="{{ m.organization_id }}" {{ 'selected' if m.organization_id == org.id }}>{{ m.organization.name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        {% else %}
+          <span class="muted small nowrap">{{ org.name }}</span>
+        {% endif %}
+        <span class="badge accent">{{ plan.name }}</span>
+        <form class="inline" method="post" action="/logout">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn small" type="submit">Sign out</button>
+        </form>
+      </div>
+    {% else %}
+      <a class="brand" href="/"><span class="brand-mark"></span>SemanticOne</a>
+      <nav>
+        <a href="/#features">Product</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/docs">Docs</a>
+      </nav>
+      <div class="right-nav">
+        {% if user %}
+          <a class="btn primary small" href="/app">Open app</a>
+        {% else %}
+          <a class="btn small" href="/login">Sign in</a>
+          <a class="btn primary small" href="/signup">Start free</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </header>
+  <main class="container {% block container_class %}{% endblock %}">
+    {% for f in flashes %}
+      <div class="flash {{ f.category }}" role="status">{{ f.message }}</div>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">
+    <div class="inner">
+      <div>&copy; SemanticOne. Apache Ossie and Apache are trademarks of the Apache Software Foundation. SemanticOne is not affiliated with or endorsed by the ASF.</div>
+      <div class="row"><a href="/pricing">Pricing</a><a href="/docs">Docs</a><a href="/api/docs">API reference</a><a href="/legal/terms">Terms</a><a href="/legal/privacy">Privacy</a></div>
+    </div>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

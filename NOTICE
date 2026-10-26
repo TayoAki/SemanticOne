@@ -1,0 +1,22 @@
+SemanticOne
+Copyright (c) 2026 the SemanticOne authors. All rights reserved.
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/):
+
+  Apache Ossie (incubating)
+  Copyright 2026 The Apache Software Foundation
+  Licensed under the Apache License, Version 2.0 (third_party/apache-ossie/LICENSE).
+
+  Files derived from apache/ossie at commit c721ffce76869cf941a1d9d8b9d01b607a87e838:
+    - semanticone/spec/schema/ossie-schema.json   (core-spec/ossie-schema.json, unmodified)
+    - tests/tpcds_semantic_model.yaml             (examples/tpcds_semantic_model.yaml, unmodified)
+
+Apache, Apache Ossie and the Apache feather logo are trademarks of The Apache
+Software Foundation. SemanticOne is not affiliated with or endorsed by the ASF.
+
+Third-party Python dependencies are listed in requirements.lock; each is
+distributed under its own license. Nearly all are permissive (MIT, BSD,
+Apache-2.0, PSF). Exceptions: psycopg / psycopg-binary (LGPL-3.0, used
+unmodified as a separately installed, dynamically imported library) and
+certifi (MPL-2.0, unmodified).

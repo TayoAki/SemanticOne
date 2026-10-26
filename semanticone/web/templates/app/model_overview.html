@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ model.name }} · SemanticOne{% endblock %}
+{% block content %}
+{% include "app/_model_head.html" %}
+{% set errors = issues|selectattr('severity', 'equalto', 'error')|list %}
+{% set warnings = issues|selectattr('severity', 'equalto', 'warning')|list %}
+<div class="grid cols-4" style="margin-bottom:16px">
+  <div class="card stat"><div class="label">Status</div><div class="value">{% if errors %}<span class="badge err">Invalid</span>{% elif warnings %}<span class="badge warn">{{ warnings|length }} warning{{ 's' if warnings|length != 1 }}</span>{% else %}<span class="badge ok">Valid</span>{% endif %}</div></div>
+  <div class="card stat"><div class="label">Datasets</div><div class="value">{{ catalog.datasets|length if catalog else 0 }}</div></div>
+  <div class="card stat"><div class="label">Metrics</div><div class="value">{{ catalog.metrics|length if catalog else 0 }}</div></div>
+  <div class="card stat"><div class="label">Connection</div><div class="value small">{% if model.connection %}{{ model.connection.name }}{% else %}<a href="/app/models/{{ model.slug }}/settings">Attach one</a>{% endif %}</div></div>
+</div>
+{% if issues %}<div class="card"><h3>Validation</h3>{% include "app/_issues.html" %}</div>{% endif %}
+{% if catalog %}
+<div class="card">
+  <h3>Metrics</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Definition</th><th>Description</th></tr></thead>
+    <tbody>
+    {% for m in catalog.metrics %}
+      <tr><td class="nowrap"><code>{{ m.name }}</code></td><td><code>{{ m.expression }}</code></td><td>{{ m.description or '' }}{% if m.synonyms %}<div class="muted small">Also: {{ m.synonyms|join(', ') }}</div>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>Datasets</h3>
+    {% for ds in spec.datasets.values() %}
+      <div style="margin-bottom:12px">
+        <strong>{{ ds.name }}</strong> <span class="muted small mono">{{ ds.source }}</span>
+        <div class="muted small">{{ ds.description or '' }}</div>
+        <div class="small">{% for f in ds.fields.values() %}<code title="{{ f.description or '' }}">{{ f.name }}</code>{% if f.is_time %}<span class="muted">⏱</span>{% endif %} {% endfor %}</div>
+      </div>
+    {% endfor %}
+  </div>
+  <div class="card">
+    <h3>Relationships</h3>
+    {% if spec.relationships %}
+    <table>
+      {% for r in spec.relationships %}
+      <tr><td class="small"><code>{{ r.from_dataset }}</code> → <code>{{ r.to_dataset }}</code></td><td class="small muted">{{ r.from_columns|join(', ') }} = {{ r.to_columns|join(', ') }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted">No relationships: each dataset is queried on its own.</p>{% endif %}
+    <p class="muted small" style="margin-top:10px">Arrows point from the many side to the one side. Queries join only in the arrow direction, which is what keeps totals from being double counted.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

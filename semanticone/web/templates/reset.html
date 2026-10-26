@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Choose a new password · SemanticOne{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <h1>Choose a new password</h1>
+  {% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+  <form method="post" action="/reset/{{ token }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="field"><label for="password">New password</label><input id="password" name="password" type="password" required minlength="10" autocomplete="new-password"></div>
+    <button class="btn primary" type="submit" style="width:100%">Update password</button>
+  </form>
+</div>
+{% endblock %}

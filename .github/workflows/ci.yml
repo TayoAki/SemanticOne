@@ -1,0 +1,30 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: warehouse
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_POSTGRES_WAREHOUSE_URL: postgresql://ci:ci@localhost:5432/warehouse
+      TEST_POSTGRES_APP_URL: postgresql://ci:ci@localhost:5432/app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Create app database
+        run: PGPASSWORD=ci psql -h localhost -U ci -d warehouse -c "CREATE DATABASE app"
+      - run: uv sync --frozen
+      - run: uv run pytest -q

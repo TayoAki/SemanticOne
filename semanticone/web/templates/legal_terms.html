@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Terms of Service · SemanticOne{% endblock %}
+{% block content %}
+<div class="card" style="max-width:820px;margin:0 auto">
+  <h1>Terms of Service</h1>
+  <p class="muted small">These terms are between you and {{ settings.legal_entity }} ("we"), the operator of SemanticOne.</p>
+  <h3>1. The service</h3>
+  <p>SemanticOne lets you store semantic model definitions, connect data warehouses you control, and run queries against them through a web interface, an API and an MCP server.</p>
+  <h3>2. Accounts</h3>
+  <p>You are responsible for activity under your account and API keys, for keeping credentials secret, and for the warehouse credentials you provide. Use a read-only database role.</p>
+  <h3>3. Your content and data</h3>
+  <p>You keep all rights to your models and data. We process them only to provide the service. Query results are returned to you and are not retained; query text and metadata are logged for usage metering and troubleshooting.</p>
+  <h3>4. Acceptable use</h3>
+  <p>Do not use the service to break the law, to access systems you are not authorized to access, to probe or attack our infrastructure, or to resell access without a written agreement.</p>
+  <h3>5. Plans, billing and cancellation</h3>
+  <p>Paid plans are billed in advance through our payment processor and renew until cancelled. You can cancel at any time from the billing page; access continues until the end of the paid period. Fees are non-refundable except where required by law.</p>
+  <h3>6. Availability and changes</h3>
+  <p>We work to keep the service available but do not guarantee uninterrupted operation unless you have a signed service level agreement. We may change features with reasonable notice.</p>
+  <h3>7. Disclaimers and liability</h3>
+  <p>The service is provided "as is". To the extent permitted by law, our total liability for any claim is limited to the fees you paid in the twelve months before the claim.</p>
+  <h3>8. Trademarks</h3>
+  <p>Apache, Apache Ossie and related marks are trademarks of the Apache Software Foundation. SemanticOne is an independent product and is not affiliated with or endorsed by the ASF.</p>
+  <h3>9. Contact</h3>
+  <p>Questions: <a href="mailto:{{ settings.support_email }}">{{ settings.support_email }}</a>.</p>
+</div>
+{% endblock %}

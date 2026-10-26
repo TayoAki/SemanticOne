@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Models · SemanticOne{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Semantic models</h1><p class="muted">Governed metric definitions for {{ org.name }}.</p></div>
+  <div class="row">
+    <a class="btn" href="/app/models/new?template=sample">New from sample</a>
+    <a class="btn primary" href="/app/models/new">New model</a>
+  </div>
+</div>
+
+<div class="grid cols-4" style="margin-bottom:20px">
+  {% set p = usage.plan %}
+  <div class="card stat">
+    <div class="label">Queries this month</div>
+    <div class="value">{{ '{:,}'.format(usage.queries) }}</div>
+    <div class="muted small">of {{ fmt_limit(p.monthly_queries) }}</div>
+    {% if p.monthly_queries > 0 %}<div class="meter"><span style="width: {{ [100, (usage.queries * 100 / p.monthly_queries)|round]|min }}%"></span></div>{% endif %}
+  </div>
+  <div class="card stat"><div class="label">Models</div><div class="value">{{ usage.models }}</div><div class="muted small">of {{ fmt_limit(p.max_models) }}</div></div>
+  <div class="card stat"><div class="label">Warehouse connections</div><div class="value">{{ usage.connections }}</div><div class="muted small">{{ 'of ' + fmt_limit(p.max_connections) if p.warehouse_connections else 'Paid plans' }}</div></div>
+  <div class="card stat"><div class="label">API keys</div><div class="value">{{ usage.api_keys }}</div><div class="muted small">of {{ fmt_limit(p.max_api_keys) }}</div></div>
+</div>
+
+{% if models %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Model</th><th>Version</th><th>Connection</th><th>Updated</th><th></th></tr></thead>
+    <tbody>
+      {% for m in models %}
+      <tr>
+        <td><a href="/app/models/{{ m.slug }}"><strong>{{ m.name }}</strong></a><div class="muted small">{{ (m.description or '')[:140] }}</div></td>
+        <td>v{{ m.current_version }}</td>
+        <td>{% if m.connection %}{{ m.connection.name }}{% else %}<span class="badge warn">None</span>{% endif %}</td>
+        <td class="nowrap muted small">{{ m.updated_at|dt }}</td>
+        <td class="right nowrap"><a class="btn small" href="/app/models/{{ m.slug }}/explore">Explore</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card empty">
+  <h3>No models yet</h3>
+  <p>Start from the sample to see how metrics, dimensions and relationships fit together.</p>
+  <a class="btn primary" href="/app/models/new?template=sample">Create the sample model</a>
+</div>
+{% endif %}
+
+<div class="grid cols-2" style="margin-top:20px">
+  <div class="card">
+    <h3>Connect an AI agent</h3>
+    <p class="muted">Give Claude, ChatGPT, Cursor or your own agent governed metrics through MCP.</p>
+    <a class="btn" href="/app/api-keys">Set up MCP</a>
+  </div>
+  <div class="card">
+    <h3>Recent queries</h3>
+    {% if recent %}
+      <table>
+        {% for q in recent %}
+        <tr>
+          <td class="small"><span class="badge {{ 'ok' if q.status == 'ok' else 'err' }}">{{ q.source }}</span> {{ model_names[q.semantic_model_id].name if q.semantic_model_id in model_names else '—' }}</td>
+          <td class="small muted right nowrap">{{ q.duration_ms }} ms · {{ q.created_at|dt }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p class="muted">No queries yet. Open a model and press Run.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

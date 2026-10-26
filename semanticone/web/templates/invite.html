@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Join {{ invite.organization.name }} · SemanticOne{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <h1>Join {{ invite.organization.name }}</h1>
+  <p class="muted">This invitation is for {{ invite.email }} ({{ invite.role }}).</p>
+  {% if needs_login %}
+    <a class="btn primary" href="/login?next=/invite/{{ token }}" style="width:100%">Sign in to accept</a>
+  {% else %}
+    <form method="post" action="/invite/{{ token }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn primary" type="submit" style="width:100%">Accept invitation</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

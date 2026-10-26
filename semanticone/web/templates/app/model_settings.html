@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Settings · {{ model.name }} · SemanticOne{% endblock %}
+{% block content %}
+{% include "app/_model_head.html" %}
+<div class="grid cols-2">
+  <form class="card" method="post" action="/app/models/{{ model.slug }}/settings">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h3>Warehouse connection</h3>
+    <p class="muted small">Queries for this model run on this connection. Expressions are translated to its SQL dialect.</p>
+    <div class="field">
+      <select name="connection_id" aria-label="Connection">
+        <option value="">None</option>
+        {% for c in connections %}<option value="{{ c.id }}" {{ 'selected' if c.id == model.connection_id }}>{{ c.name }} ({{ c.kind }})</option>{% endfor %}
+      </select>
+    </div>
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="/app/connections">Manage connections</a>
+  </form>
+  <div class="card">
+    <h3>Identifiers</h3>
+    <p class="small">API / MCP model id: <code>{{ model.slug }}</code></p>
+    <p class="small">Name and description come from the document. Edit them in the editor.</p>
+    {% if membership.is_admin %}
+    <h3 style="margin-top:20px">Danger zone</h3>
+    <form method="post" action="/app/models/{{ model.slug }}/delete" onsubmit="return confirm('Delete {{ model.name }} and all its versions? This cannot be undone.')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn danger" type="submit">Delete model</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

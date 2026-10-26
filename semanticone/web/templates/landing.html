@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}SemanticOne · Governed metrics for every tool and AI agent{% endblock %}
+{% block content %}
+<section class="hero">
+  <span class="eyebrow">Built on the Apache Ossie open standard</span>
+  <h1>One definition of every metric. Every tool and AI agent gets the same answer.</h1>
+  <p class="lead">SemanticOne hosts your semantic models in the vendor-neutral Apache Ossie format, validates and versions them, and serves governed metrics over SQL, a REST API and an MCP server, so dashboards, notebooks and AI agents stop disagreeing about revenue.</p>
+  <div class="row">
+    <a class="btn primary large" href="/signup">Start free, no card needed</a>
+    <a class="btn large" href="/docs">Read the docs</a>
+  </div>
+  <p class="muted small" style="margin-top:14px">Sample warehouse included: run your first governed query in under a minute.</p>
+</section>
+
+<section class="section" id="features">
+  <h2>From YAML to trustworthy answers</h2>
+  <p class="sub">Bring a model exported from dbt, Snowflake, Cube or any Ossie-compatible tool, or write one in the editor.</p>
+  <div class="grid cols-3">
+    <div class="card feature">
+      <h3>Validate and version</h3>
+      <p>Schema and reference checks on every save, legacy 0.1 documents migrated automatically, full version history with diffs and one-click restore.</p>
+    </div>
+    <div class="card feature">
+      <h3>Queries that can't double count</h3>
+      <p>The engine joins only along many-to-one paths and evaluates each aggregate at its own grain, so mixing orders, line items and tickets never inflates numbers. Unsafe questions are refused with an explanation.</p>
+    </div>
+    <div class="card feature">
+      <h3>MCP server for AI agents</h3>
+      <p>Point Claude, ChatGPT, Cursor or your own agent at one URL. Agents discover metrics with their descriptions and synonyms and query them with guardrails instead of guessing SQL.</p>
+    </div>
+    <div class="card feature">
+      <h3>Your warehouse, your data</h3>
+      <p>Connect PostgreSQL, Snowflake, BigQuery, Databricks, Redshift or MySQL. Credentials are encrypted at rest; queries run in your warehouse and nothing is copied.</p>
+    </div>
+    <div class="card feature">
+      <h3>REST API and SQL out</h3>
+      <p>Compile any metrics question to dialect-correct SQL, or run it and get JSON rows. Wire it into apps, notebooks, reverse ETL and BI tools.</p>
+    </div>
+    <div class="card feature">
+      <h3>Open standard, no lock-in</h3>
+      <p>Your models stay plain Apache Ossie YAML. Download them any time and use them with any compatible tool.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Ask once, get the governed answer</h2>
+  <p class="sub">The same question from an AI agent, the API or the explorer compiles to the same SQL.</p>
+  <div class="grid cols-2">
+    <div>
+      <div class="codeblock-head"><strong>Request</strong><span class="muted small">POST /api/v1/models/acme-commerce/query</span></div>
+<pre><code>{
+  "metrics": ["total_revenue", "order_count", "ticket_count"],
+  "dimensions": ["customers.country"],
+  "order_by": ["-total_revenue"],
+  "limit": 5
+}</code></pre>
+    </div>
+    <div>
+      <div class="codeblock-head"><strong>What the engine does</strong></div>
+<pre><code>-- revenue rooted at order_items, orders at orders,
+-- tickets at support_tickets: each grouped by country
+-- separately, then combined on country.
+-- No fan-out, no chasm trap, no inflated totals.</code></pre>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Simple pricing</h2>
+  <p class="sub">Start on the free plan with the sample warehouse. Upgrade when you connect production data.</p>
+  <div class="row" style="justify-content:center"><a class="btn primary" href="/pricing">See plans</a></div>
+</section>
+{% endblock %}

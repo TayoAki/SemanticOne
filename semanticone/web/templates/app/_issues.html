@@ -1,0 +1,7 @@
+{% if issues %}
+<ul class="issues">
+  {% for i in issues %}
+  <li class="{{ i.severity }}"><span class="path">{{ i.severity|upper }} · {{ i.path }}</span>{{ i.message }}</li>
+  {% endfor %}
+</ul>
+{% endif %}

@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Explore · {{ model.name }} · SemanticOne{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+{% include "app/_model_head.html" %}
+{% if not connection %}
+  <div class="flash error">This model has no warehouse connection, so queries can be compiled but not run. <a href="/app/models/{{ model.slug }}/settings">Attach a connection</a>.</div>
+{% endif %}
+<div class="explorer">
+  <aside>
+    <div class="card" style="padding:14px">
+      <div class="row" style="justify-content:space-between"><h3 style="margin:0">Metrics</h3><input type="search" id="search" placeholder="Filter…" style="max-width:130px;padding:5px 8px"></div>
+      <div class="picker" id="metrics" style="margin-top:8px"></div>
+    </div>
+    <div class="card" style="padding:14px">
+      <h3>Group by</h3>
+      <div class="picker" id="dimensions"></div>
+    </div>
+  </aside>
+  <section>
+    <div class="card" style="padding:14px">
+      <div class="row" style="justify-content:space-between">
+        <div class="row">
+          <button class="btn primary" id="run" {{ 'disabled' if not connection }}>Run</button>
+          <button class="btn" id="compile">Show SQL</button>
+          <button class="btn" id="copy-api" title="Copy a curl command for this query">Copy as API call</button>
+        </div>
+        <div class="row small">
+          <label for="order" style="margin:0">Order</label>
+          <select id="order" style="width:auto"></select>
+          <label for="limit" style="margin:0">Limit</label>
+          <input id="limit" type="number" value="100" min="1" style="width:90px">
+        </div>
+      </div>
+      <div id="filters" style="margin-top:12px"></div>
+      <button class="btn small" id="add-filter" style="margin-top:8px">+ Filter</button>
+    </div>
+    <div id="error" class="flash error hidden"></div>
+    <div id="warnings"></div>
+    <div class="card hidden" id="chart-card"><svg class="chart" id="chart" role="img" aria-label="Chart of results"></svg></div>
+    <div class="card" id="results-card" style="padding:0">
+      <div class="empty" id="placeholder">Pick at least one metric or dimension, then press Run.</div>
+      <div class="table-wrap hidden" id="table-wrap" style="border:none"><table id="results"></table></div>
+    </div>
+    <p class="muted small" id="meta"></p>
+    <details class="card" id="sql-card"><summary>Generated SQL and plan</summary><pre><code id="sql">Run or compile a query to see the SQL.</code></pre><div id="plan" class="small"></div></details>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const CATALOG = {{ catalog|tojson }};
+const MODEL = {{ model.slug|tojson }};
+const BASE_URL = {{ settings.base_url|tojson }};
+(() => {
+  const csrf = document.querySelector('meta[name="csrf-token"]').content;
+  const $ = (id) => document.getElementById(id);
+  const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const OPS = ["=", "!=", ">", ">=", "<", "<=", "in", "not_in", "between", "like", "is_null", "is_not_null"];
+
+  // Metrics picker
+  function renderMetrics(filter = "") {
+    const q = filter.toLowerCase();
+    $("metrics").innerHTML = CATALOG.metrics.filter((m) => !q || (m.name + " " + (m.description || "") + " " + (m.synonyms || []).join(" ")).toLowerCase().includes(q))
+      .map((m) => `<label><input type="checkbox" name="metric" value="${esc(m.name)}" ${selectedMetrics.has(m.name) ? "checked" : ""}><span><code>${esc(m.name)}</code><span class="desc">${esc(m.description || m.expression)}</span></span></label>`).join("") || '<p class="muted small">No matches</p>';
+  }
+  const selectedMetrics = new Set();
+  $("metrics").addEventListener("change", (e) => { if (e.target.name === "metric") { e.target.checked ? selectedMetrics.add(e.target.value) : selectedMetrics.delete(e.target.value); refreshOrder(); } });
+  $("search").addEventListener("input", (e) => renderMetrics(e.target.value));
+
+  // Dimensions picker, grouped by dataset; dimension-flagged fields first
+  const byDataset = {};
+  CATALOG.dimensions.forEach((d) => { const ds = d.name.split(".")[0]; (byDataset[ds] = byDataset[ds] || []).push(d); });
+  $("dimensions").innerHTML = Object.entries(byDataset).map(([ds, dims]) =>
+    `<div class="group">${esc(ds)}</div>` + dims.sort((a, b) => (a.role ? 1 : 0) - (b.role ? 1 : 0)).map((d) =>
+      `<label><input type="checkbox" name="dimension" value="${esc(d.name)}"><span><code>${esc(d.name.split(".")[1])}</code>${d.time ? ` <select data-grain="${esc(d.name)}" style="width:auto;padding:1px 4px;font-size:12px"><option value="">raw</option>${d.grains.map((g) => `<option ${g === "month" ? "selected" : ""}>${g}</option>`).join("")}</select>` : ""}<span class="desc">${esc(d.description || (d.role ? "attribute" : ""))}</span></span></label>`).join("")).join("");
+  $("dimensions").addEventListener("change", refreshOrder);
+
+  function dims() {
+    return [...document.querySelectorAll('input[name="dimension"]:checked')].map((el) => {
+      const grain = document.querySelector(`select[data-grain="${CSS.escape(el.value)}"]`);
+      return grain && grain.value ? `${el.value}__${grain.value}` : el.value;
+    });
+  }
+  function refreshOrder() {
+    const current = $("order").value;
+    const opts = [...dims(), ...selectedMetrics];
+    $("order").innerHTML = '<option value="">default</option>' + opts.flatMap((o) => [`<option value="-${esc(o)}">${esc(o)} ↓</option>`, `<option value="${esc(o)}">${esc(o)} ↑</option>`]).join("");
+    if ([...$("order").options].some((o) => o.value === current)) $("order").value = current;
+  }
+
+  // Filters
+  const fieldOptions = () => CATALOG.dimensions.map((d) => d.name).concat([...selectedMetrics]);
+  $("add-filter").addEventListener("click", () => {
+    const row = document.createElement("div");
+    row.className = "row filter-row";
+    row.style.marginBottom = "6px";
+    row.innerHTML = `<select class="f-field grow">${fieldOptions().map((f) => `<option>${esc(f)}</option>`).join("")}</select>
+      <select class="f-op" style="width:auto">${OPS.map((o) => `<option>${o}</option>`).join("")}</select>
+      <input class="f-value grow" type="text" placeholder="value (comma-separated for in / between)">
+      <button class="btn small" type="button" aria-label="Remove filter">✕</button>`;
+    row.querySelector("button").addEventListener("click", () => row.remove());
+    $("filters").appendChild(row);
+  });
+  function parseValue(raw) {
+    const t = raw.trim();
+    if (t === "true" || t === "false") return t === "true";
+    if (t !== "" && !isNaN(Number(t))) return Number(t);
+    return t;
+  }
+  function filters() {
+    return [...document.querySelectorAll(".filter-row")].map((row) => {
+      const op = row.querySelector(".f-op").value;
+      const raw = row.querySelector(".f-value").value;
+      const f = {field: row.querySelector(".f-field").value, op};
+      if (["in", "not_in", "between"].includes(op)) f.value = raw.split(",").map(parseValue);
+      else if (!["is_null", "is_not_null"].includes(op)) f.value = parseValue(raw);
+      return f;
+    });
+  }
+  function query() {
+    const q = {metrics: [...selectedMetrics], dimensions: dims(), filters: filters(), limit: Number($("limit").value) || 100};
+    if ($("order").value) q.order_by = [$("order").value];
+    return q;
+  }
+
+  async function post(path, body) {
+    const res = await fetch(path, {method: "POST", headers: {"Content-Type": "application/json", "X-CSRF-Token": csrf}, body: JSON.stringify(body)});
+    const data = await res.json().catch(() => ({error: `HTTP ${res.status}`}));
+    if (!res.ok) throw new Error(data.error?.message || data.error || `HTTP ${res.status}`);
+    return data;
+  }
+  function showError(msg) {
+    $("error").textContent = msg; $("error").classList.toggle("hidden", !msg);
+    if (msg) {
+      $("table-wrap").classList.add("hidden"); $("chart-card").classList.add("hidden");
+      $("placeholder").classList.remove("hidden"); $("placeholder").textContent = "No results.";
+      $("meta").textContent = "";
+      $("sql").textContent = "Run or compile a query to see the SQL."; $("plan").innerHTML = "";
+    }
+  }
+  function showSql(data) {
+    $("sql").textContent = data.sql;
+    $("plan").innerHTML = (data.plan || []).map((p) => `<p><strong>${esc(p.root)}</strong>: ${p.joins.length ? esc(p.joins.join(", ")) : "no joins"}</p>`).join("");
+    $("warnings").innerHTML = (data.warnings || []).map((w) => `<div class="flash info">${esc(w)}</div>`).join("");
+  }
+  const fmt = (v) => {
+    if (typeof v === "number") return Number.isInteger(v) ? v.toLocaleString() : v.toLocaleString(undefined, {maximumFractionDigits: 2});
+    if (v === null) return "∅";
+    const s = String(v);
+    return /^\d{4}-\d{2}-\d{2}T00:00:00$/.test(s) ? s.slice(0, 10) : s.replace(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}):00$/, "$1 $2");
+  };
+
+  function renderTable(data) {
+    $("placeholder").classList.add("hidden");
+    $("table-wrap").classList.remove("hidden");
+    const numeric = data.columns.map((_, i) => data.rows.some((r) => typeof r[i] === "number"));
+    $("results").innerHTML = `<thead><tr>${data.columns.map((c, i) => `<th class="${numeric[i] ? "right" : ""}">${esc(c)}</th>`).join("")}</tr></thead>` +
+      `<tbody>${data.rows.map((r) => `<tr>${r.map((v, i) => `<td class="${numeric[i] ? "num" : ""}">${esc(fmt(v))}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${data.columns.length}" class="empty">No rows</td></tr>`}</tbody>`;
+    $("meta").textContent = `${data.row_count.toLocaleString()} rows · ${data.duration_ms} ms · model v${data.model_version}`;
+  }
+
+  function renderChart(data, q) {
+    const card = $("chart-card");
+    const metricIdx = data.columns.findIndex((c, i) => i >= q.dimensions.length);
+    if (q.dimensions.length !== 1 || metricIdx < 0 || !data.rows.length) { card.classList.add("hidden"); return; }
+    card.classList.remove("hidden");
+    const svg = $("chart");
+    const W = svg.clientWidth || 800, H = 260, P = {l: 60, r: 10, t: 10, b: 40};
+    const isTime = /__(hour|day|week|month|quarter|year)$/.test(q.dimensions[0]) || /^\d{4}-\d{2}-\d{2}/.test(String(data.rows[0][0]));
+    let rows = data.rows.filter((r) => typeof r[metricIdx] === "number").slice(0, isTime ? 500 : 30);
+    if (isTime) rows = rows.slice().sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    const max = Math.max(0, ...rows.map((r) => r[metricIdx])), min = Math.min(0, ...rows.map((r) => r[metricIdx]));
+    const y = (v) => P.t + (H - P.t - P.b) * (1 - (v - min) / ((max - min) || 1));
+    const bw = (W - P.l - P.r) / Math.max(rows.length, 1);
+    const label = (v) => fmt(v).slice(0, isTime ? 10 : 12);
+    let marks = "";
+    if (isTime) {
+      const pts = rows.map((r, i) => `${P.l + bw * (i + 0.5)},${y(r[metricIdx])}`).join(" ");
+      marks = `<polyline class="line" points="${pts}"/>`;
+    } else {
+      marks = rows.map((r, i) => `<rect class="bar" x="${P.l + bw * i + 2}" y="${Math.min(y(r[metricIdx]), y(0))}" width="${Math.max(bw - 4, 1)}" height="${Math.abs(y(0) - y(r[metricIdx]))}"><title>${esc(r[0])}: ${esc(fmt(r[metricIdx]))}</title></rect>`).join("");
+    }
+    const step = Math.ceil(rows.length / Math.floor((W - P.l) / 70));
+    const xlabels = rows.map((r, i) => i % step ? "" : `<text x="${P.l + bw * (i + 0.5)}" y="${H - P.b + 16}" text-anchor="middle">${esc(label(r[0]))}</text>`).join("");
+    const ylabels = [min, (min + max) / 2, max].map((v) => `<text x="${P.l - 6}" y="${y(v) + 4}" text-anchor="end">${esc(fmt(Math.round(v)))}</text>`).join("");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.innerHTML = `<line class="axis" x1="${P.l}" x2="${W - P.r}" y1="${y(0)}" y2="${y(0)}"/>${marks}${xlabels}${ylabels}<text x="${P.l}" y="${H - 6}">${esc(data.columns[metricIdx])} by ${esc(data.columns[0])}</text>`;
+  }
+
+  $("run").addEventListener("click", async () => {
+    const q = query();
+    showError("");
+    $("run").disabled = true; $("run").textContent = "Running…";
+    try {
+      const data = await post(`/app/models/${MODEL}/query`, q);
+      renderTable(data); renderChart(data, q); showSql(data);
+    } catch (e) { showError(e.message); }
+    finally { $("run").disabled = false; $("run").textContent = "Run"; }
+  });
+  $("compile").addEventListener("click", async () => {
+    showError("");
+    try {
+      const data = await post(`/api/v1/models/${MODEL}/compile`, query());
+      showSql(data); $("sql-card").open = true;
+    } catch (e) { showError(e.message); }
+  });
+  $("copy-api").addEventListener("click", async () => {
+    const cmd = `curl -s ${BASE_URL}/api/v1/models/${MODEL}/query \\\n  -H "Authorization: Bearer $SEMANTICONE_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(query())}'`;
+    try { await navigator.clipboard.writeText(cmd); $("copy-api").textContent = "Copied!"; setTimeout(() => $("copy-api").textContent = "Copy as API call", 1500); }
+    catch { $("sql").textContent = cmd; $("sql-card").open = true; }
+  });
+
+  // Start with something useful selected: the first metric over its natural time axis.
+  const first = CATALOG.metrics[0];
+  if (first) selectedMetrics.add(first.name);
+  renderMetrics();
+  const timeName = first && first.default_time_dimension;
+  const preferred = timeName ? document.querySelector(`input[name="dimension"][value="${CSS.escape(timeName)}"]`) : null;
+  if (preferred) preferred.checked = true;
+  refreshOrder();
+})();
+</script>
+{% endblock %}

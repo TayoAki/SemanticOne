@@ -1,0 +1,37 @@
+# Local production-like stack: `docker compose up --build`, then open http://localhost:8000
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: semanticone
+      POSTGRES_PASSWORD: semanticone
+      POSTGRES_DB: semanticone
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U semanticone"]
+      interval: 5s
+      retries: 10
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://semanticone:semanticone@db:5432/semanticone
+      APP_BASE_URL: http://localhost:8000
+      SECRET_KEY: ${SECRET_KEY:-change-me-local-only}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_PRO: ${STRIPE_PRICE_PRO:-}
+      STRIPE_PRICE_BUSINESS: ${STRIPE_PRICE_BUSINESS:-}
+      # Lets local testing connect to warehouses on your own network.
+      ALLOW_PRIVATE_NETWORKS: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - appdata:/data
+volumes:
+  pgdata:
+  appdata:

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Create your account · SemanticOne{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <h1>Create your account</h1>
+  {% if invite %}
+    <p class="muted">You're joining <strong>{{ invite.organization.name }}</strong>. Sign up with {{ invite.email }}.</p>
+  {% else %}
+    <p class="muted">Free plan with a sample warehouse. No credit card.</p>
+  {% endif %}
+  {% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+  <form method="post" action="/signup">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="invite_token" value="{{ invite_token }}">
+    <div class="field"><label for="name">Your name</label><input id="name" name="name" type="text" autocomplete="name" value="{{ form.name or '' }}"></div>
+    <div class="field"><label for="email">Work email</label><input id="email" name="email" type="email" required autocomplete="email" value="{{ form.email or (invite.email if invite else '') }}"></div>
+    <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" required minlength="10" autocomplete="new-password"><div class="hint">At least 10 characters.</div></div>
+    {% if not invite %}
+    <div class="field"><label for="workspace">Company or team</label><input id="workspace" name="workspace" type="text" placeholder="Acme Analytics" value="{{ form.workspace or '' }}"></div>
+    {% endif %}
+    <button class="btn primary" type="submit" style="width:100%">Create account</button>
+  </form>
+  <p class="muted small" style="margin-top:14px">By signing up you agree to the <a href="/legal/terms">Terms</a> and <a href="/legal/privacy">Privacy Policy</a>. Already have an account? <a href="/login">Sign in</a>.</p>
+</div>
+{% endblock %}

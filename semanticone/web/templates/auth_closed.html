@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Sign-ups closed · SemanticOne{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <h1>Sign-ups are invite-only</h1>
+  <p class="muted">Ask a workspace admin for an invitation, or <a href="mailto:{{ settings.sales_email }}">contact us</a>.</p>
+</div>
+{% endblock %}
