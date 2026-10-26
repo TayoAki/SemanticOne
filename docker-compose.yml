@@ -20,7 +20,7 @@ services:
     environment:
       DATABASE_URL: postgresql://semanticone:semanticone@db:5432/semanticone
       APP_BASE_URL: http://localhost:8000
-      SECRET_KEY: ${SECRET_KEY:-change-me-local-only}
+      SECRET_KEY: ${SECRET_KEY:-}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}

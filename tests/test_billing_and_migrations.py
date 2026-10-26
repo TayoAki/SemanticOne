@@ -95,3 +95,20 @@ def test_migrations_match_models(tmp_path):
     with engine.connect() as conn:
         diff = compare_metadata(MigrationContext.configure(conn), Base.metadata)
     assert diff == [], f"models and migrations differ; run `alembic revision --autogenerate`: {diff}"
+
+
+def test_instance_keys_generated_once_and_private(tmp_path):
+    import stat
+
+    from cryptography.fernet import Fernet
+
+    from semanticone.config import INSTANCE_KEYS_FILE, _instance_keys
+
+    first = _instance_keys(tmp_path)
+    second = _instance_keys(tmp_path)
+    assert first == second
+    Fernet(first["encryption_key"].encode())  # valid Fernet key
+    assert len(first["secret_key"]) >= 48
+    mode = stat.S_IMODE((tmp_path / INSTANCE_KEYS_FILE).stat().st_mode)
+    assert mode == 0o600
+    assert list(p.name for p in tmp_path.iterdir()) == [INSTANCE_KEYS_FILE]

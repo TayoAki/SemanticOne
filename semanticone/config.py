@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 import secrets
 from dataclasses import dataclass, field
@@ -71,15 +73,47 @@ class Settings:
         return self.base_url.startswith("https://")
 
 
+INSTANCE_KEYS_FILE = "instance_keys.json"
+
+
+def _instance_keys(data_dir: Path) -> dict[str, str]:
+    """Load, or create on first boot, keys kept in DATA_DIR (0600) when env vars don't provide them.
+
+    Keeping the encryption key on the app's volume rather than in the database means a
+    database dump alone cannot decrypt stored warehouse credentials. Multi-replica
+    deployments should set SECRET_KEY and ENCRYPTION_KEY explicitly instead.
+    """
+    from cryptography.fernet import Fernet
+
+    path = data_dir / INSTANCE_KEYS_FILE
+    if not path.exists():
+        keys = {"secret_key": secrets.token_urlsafe(48), "encryption_key": Fernet.generate_key().decode()}
+        tmp = data_dir / f".{INSTANCE_KEYS_FILE}.{os.getpid()}.tmp"
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as handle:
+            json.dump(keys, handle)
+        try:
+            os.link(tmp, path)  # atomic create-if-absent: concurrent workers agree on one file
+        except FileExistsError:
+            pass
+        finally:
+            os.unlink(tmp)
+        logging.getLogger("semanticone").warning(
+            "Generated SECRET_KEY/ENCRYPTION_KEY in %s. Back up this file: losing it makes saved "
+            "warehouse credentials unreadable.",
+            path,
+        )
+    return json.loads(path.read_text())
+
+
 @lru_cache
 def get_settings() -> Settings:
     settings = Settings()
-    if not settings.secret_key:
-        if settings.is_production:
-            raise RuntimeError("SECRET_KEY must be set in production")
-        # Development fallback: stable for the life of the process only.
-        object.__setattr__(settings, "secret_key", secrets.token_urlsafe(32))
-    if settings.is_production and not settings.encryption_key:
-        raise RuntimeError("ENCRYPTION_KEY must be set in production (see `semanticone generate-key`)")
     settings.data_dir.mkdir(parents=True, exist_ok=True)
+    if not settings.secret_key or not settings.encryption_key:
+        keys = _instance_keys(settings.data_dir)
+        if not settings.secret_key:
+            object.__setattr__(settings, "secret_key", keys["secret_key"])
+        if not settings.encryption_key:
+            object.__setattr__(settings, "encryption_key", keys["encryption_key"])
     return settings

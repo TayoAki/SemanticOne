@@ -39,13 +39,13 @@ docker compose up --build     # app + PostgreSQL on http://localhost:8000
 
 The app is a single container (`Dockerfile`) plus PostgreSQL.
 
-1. Generate secrets: `uv run semanticone generate-key` gives `SECRET_KEY` and `ENCRYPTION_KEY`. Store `ENCRYPTION_KEY` safely: losing it makes saved warehouse credentials unreadable.
-2. Provision PostgreSQL and set `DATABASE_URL`.
-3. Set `ENVIRONMENT=production`, `APP_BASE_URL=https://your-domain`, and the variables in [`.env.example`](.env.example).
-4. Mount a small persistent volume at `/data` (sample warehouse file); it is regenerated if lost.
+1. Provision PostgreSQL and set `DATABASE_URL`.
+2. Set `ENVIRONMENT=production`, `APP_BASE_URL=https://your-domain`, and the variables in [`.env.example`](.env.example).
+3. Mount a small persistent volume at `/data`.
+4. Secrets: on a single instance, `SECRET_KEY` and `ENCRYPTION_KEY` are generated on first boot into `/data/instance_keys.json` (mode 0600, kept apart from the database). Back that file up, because losing it makes saved warehouse credentials unreadable. With several replicas, set both variables explicitly instead (`uv run semanticone generate-key`).
 5. Migrations run automatically on start and are safe with multiple workers. `semanticone migrate` is also available as a release step.
 
-**Railway:** `railway.json` is included (Dockerfile build, pre-deploy migration, `/healthz` health check). Create a project with a PostgreSQL service and this repo, then set the variables. **Anywhere else:** any container host (Fly.io, Render, ECS, Cloud Run, Kubernetes) works the same way.
+**Railway:** `railway.json` is included (Dockerfile build, pre-deploy migration, `/healthz` health check). Create a project with a PostgreSQL service and this repo, attach a volume at `/data`, set `RAILWAY_RUN_UID=0` (Railway volumes are root-owned), then set the variables. **Anywhere else:** any container host (Fly.io, Render, ECS, Cloud Run, Kubernetes) works the same way.
 
 ### Stripe
 

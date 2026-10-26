@@ -109,13 +109,7 @@ def generate_token() -> tuple[str, str]:
 
 
 def _fernet() -> Fernet:
-    settings = get_settings()
-    key = settings.encryption_key
-    if key:
-        return Fernet(key.encode())
-    # Development fallback: derive a key from SECRET_KEY.
-    derived = hashlib.sha256(("semanticone-encryption:" + settings.secret_key).encode()).digest()
-    return Fernet(base64.urlsafe_b64encode(derived))
+    return Fernet(get_settings().encryption_key.encode())
 
 
 def encrypt(value: str) -> str:
